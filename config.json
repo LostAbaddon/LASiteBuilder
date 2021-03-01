@@ -1,0 +1,213 @@
+{
+	"title": "预死者协会",
+	"shortname": "DFA",
+	"description": "有趣、严肃、中二、搞笑的文章、科普、游戏、收藏，这就是我的私人世界！",
+	"owner": "LostAbaddon",
+	"GA": "UA-4967510-4",
+	"publish": "C:\\Users\\Asus\\Documents\\LostAbaddonSite",
+	"jLAss": ["math", "extends"],
+	"database": "granary",
+	"siteMap": [
+		{
+			"name": "随笔",
+			"type": "viewer",
+			"category": "essay",
+			"subs": [
+				{
+					"name": "头脑风暴",
+					"type": "viewer",
+					"category": "mindstorm"
+				},
+				{
+					"name": "书评影评",
+					"type": "viewer",
+					"category": "reviews"
+				},
+				{
+					"name": "闲扯",
+					"type": "viewer",
+					"category": "issue"
+				}
+			]
+		},
+		{
+			"name": "格物致知",
+			"type": "viewer",
+			"category": "science",
+			"subs": [
+				{
+					"name": "数学",
+					"type": "viewer",
+					"category": "math",
+					"subs": [
+						{
+							"name": "组合数学",
+							"type": "viewer",
+							"category": "combination"
+						},
+						{
+							"name": "数论",
+							"type": "viewer",
+							"category": "number"
+						},
+						{
+							"name": "几何",
+							"type": "viewer",
+							"category": "geometry"
+						}
+					]
+				},
+				{
+					"name": "物理",
+					"type": "viewer",
+					"category": "physics",
+					"subs": [
+						{
+							"name": "广义相对论",
+							"type": "viewer",
+							"category": "gravity"
+						},
+						{
+							"name": "规范场论",
+							"type": "viewer",
+							"category": "gauge"
+						},
+						{
+							"name": "复杂网络",
+							"type": "viewer",
+							"category": "complexnetwork"
+						},
+						{
+							"name": "量子计算",
+							"type": "viewer",
+							"category": "quantumcompute"
+						},
+						{
+							"name": "虚构",
+							"type": "viewer",
+							"category": "virtual"
+						}
+					]
+				},
+				{
+					"name": "算法信息论",
+					"type": "viewer",
+					"category": "AIT"
+				},
+				{
+					"name": "IT相关",
+					"type": "viewer",
+					"category": "IT"
+				}
+			]
+		},
+		{
+			"name": "虚拟世界",
+			"type": "viewer",
+			"category": "novel",
+			"subs": [
+				{
+					"name": "科幻",
+					"type": "viewer",
+					"category": "scific"
+				},
+				{
+					"name": "奇幻",
+					"type": "viewer",
+					"category": "magic"
+				},
+				{
+					"name": "推理",
+					"type": "viewer",
+					"category": "detective"
+				}
+			]
+		},
+		{
+			"name": "实用工具",
+			"type": "folder",
+			"category": "tools",
+			"subs": [
+				{
+					"name": "写字板",
+					"type": "page",
+					"category": "writer"
+				},
+				{
+					"name": "计算器",
+					"type": "page",
+					"category": "calculator"
+				}
+			]
+		},
+		{
+			"name": "休闲娱乐",
+			"type": "folder",
+			"category": "entertain",
+			"subs": [
+				{
+					"name": "三消俄罗斯方块",
+					"type": "page",
+					"category": "tritetris"
+				},
+				{
+					"name": "无尽2048",
+					"type": "page",
+					"category": "infinity2048"
+				},
+				{
+					"name": "诡异弹球",
+					"type": "page",
+					"category": "bunceball"
+				},
+				{
+					"name": "普通的五子棋",
+					"type": "page",
+					"category": "rushgo"
+				}
+			]
+		},
+		{
+			"name": "资料库",
+			"type": "folder",
+			"category": "library",
+			"subs": [
+				{
+					"name": "颜色表",
+					"type": "page",
+					"category": "",
+					"subs": [
+						{
+							"name": "中国古代常用色",
+							"type": "page",
+							"category": "chinesecolor"
+						},
+						{
+							"name": "日本古代常用色",
+							"type": "page",
+							"category": "japanesecolor"
+						}
+					]
+				},
+				{
+					"name": "码库",
+					"type": "page",
+					"category": "",
+					"subs": [
+						{
+							"name": "MarkUp 语法表",
+							"type": "page",
+							"category": "markup"
+						},
+						{
+							"name": "LaTeX 数学公式",
+							"type": "page",
+							"category": "latex"
+						}
+					]
+				}
+			]
+		}
+	],
+	"aboutMe": "views/aboutMe"
+}

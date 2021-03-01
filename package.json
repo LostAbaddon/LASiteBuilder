@@ -1,0 +1,11 @@
+{
+	"name": "MySite",
+	"version": "0.1.0",
+	"main": "index.js",
+	"dependencies": {
+		"axios": "^0.21.1",
+		"vue": "^2.6.12",
+		"vue-notification": "^1.3.20",
+		"vue-router": "^3.5.1"
+	}
+}
