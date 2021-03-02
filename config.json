@@ -148,7 +148,12 @@
 				{
 					"name": "诡异哥布林与不靠谱守卫",
 					"type": "page",
-					"category": "bunceball"
+					"category": "ballcrush"
+				},
+				{
+					"name": "五子棋",
+					"type": "page",
+					"category": "rushgo"
 				},
 				{
 					"name": "三消俄罗斯方块（迁移中）",
@@ -159,11 +164,6 @@
 					"name": "无尽2048（迁移中）",
 					"type": "page",
 					"category": "infinity2048"
-				},
-				{
-					"name": "普通的五子棋（迁移中）",
-					"type": "page",
-					"category": "rushgo"
 				}
 			]
 		},

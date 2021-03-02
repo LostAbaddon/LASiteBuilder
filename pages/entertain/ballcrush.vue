@@ -37,7 +37,7 @@ chChangeLoadingHint.addEventListener('message', msg => {
 });
 
 export default {
-	name: "BunceBall",
+	name: "BallCrush",
 	async mounted () {
 		if (needLoad) {
 			await Promise.all([
