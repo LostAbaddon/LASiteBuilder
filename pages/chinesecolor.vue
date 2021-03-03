@@ -2173,10 +2173,10 @@ export default {
 			var ele = evt.target;
 			this.$el.querySelector('.container').style.backgroundColor = ele.style.backgroundColor;
 			navigator.clipboard.writeText(ele.style.backgroundColor).then(() => {
-				Vue.notify({
-					"title": "RGB值已复制到剪切板",
-					"position": 'top right',
-					"animation-type": "velocity",
+				notify({
+					title: "RGB值已复制到剪切板",
+					duration: 3000,
+					type: 'success'
 				});
 			});
 		}

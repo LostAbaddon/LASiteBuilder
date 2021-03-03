@@ -100,14 +100,7 @@ export default {
 			}
 		},
 		onClick (evt) {
-			var ele = evt.target;
-			if (!ele) return;
-			var path = ele.getAttribute('href');
-			if (!path || path.indexOf('#') !== 0) return;
-			var last = location.hash;
-			setTimeout(() => {
-				history.replaceState(null, '', last);
-			}, 0);
+			onVueHyperLinkTriggered(this, evt);
 		}
 	}
 }
