@@ -7,6 +7,7 @@
 	"publish": "C:\\Users\\Asus\\Documents\\LostAbaddonSite",
 	"jLAss": ["math", "extends"],
 	"database": "granary",
+	"lifecycle": "lifecycle.js",
 	"siteMap": [
 		{
 			"name": "随笔",
