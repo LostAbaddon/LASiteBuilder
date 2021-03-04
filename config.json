@@ -130,12 +130,17 @@
 			"category": "tools",
 			"subs": [
 				{
-					"name": "写字板",
+					"name": "解析 MarkUp",
+					"type": "page",
+					"category": "parseMarkup"
+				},
+				{
+					"name": "写字板（迁移中）",
 					"type": "page",
 					"category": "writer"
 				},
 				{
-					"name": "计算器",
+					"name": "计算器（迁移中）",
 					"type": "page",
 					"category": "calculator"
 				}
