@@ -215,5 +215,9 @@
 			]
 		}
 	],
-	"aboutMe": "views/aboutMe"
+	"aboutMe": "views/aboutMe",
+	"likeCoin": {
+		"id": "lostabaddon",
+		"forbidden": ["myqcloud.com"]
+	}
 }
