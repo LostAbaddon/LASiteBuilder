@@ -17,7 +17,7 @@ export default {
 		await wait();
 
 		var content = await Granary.getContent('api/latex.md');
-		var html = MarkUp.parse(content, {
+		var html = await MarkUp.parse(content, {
 			toc: true,
 			glossary: false,
 			resources: false,

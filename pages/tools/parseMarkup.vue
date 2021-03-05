@@ -58,7 +58,7 @@ export default {
 				action: 'show'
 			});
 
-			var html = MarkUp.fullParse(markup, {
+			var html = await MarkUp.fullParse(markup, {
 				toc: true,
 				glossary: true,
 				resources: true,

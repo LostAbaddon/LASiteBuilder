@@ -17,7 +17,7 @@ export default {
 		if (!!update) {
 			content = content + '\n\n\n+++\n\n\n' + update;
 		}
-		var html = MarkUp.parse(content, {
+		var html = await MarkUp.parse(content, {
 			toc: false,
 			glossary: false,
 			resources: false,
