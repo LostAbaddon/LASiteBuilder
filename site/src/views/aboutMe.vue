@@ -13,7 +13,14 @@ export default {
 		});
 		await wait();
 
-		var [content, update] = await Promise.all([Granary.getContent('api/aboutme.md'), Granary.getContent('api/updatelog.md')]);
+		var [content, todo, update] = await Promise.all([
+			Granary.getContent('api/aboutme.md'),
+			Granary.getContent('api/todo.md'),
+			Granary.getContent('api/updatelog.md')
+		]);
+		if (!!todo) {
+			content = content + '\n\n\n+++\n\n\n' + todo;
+		}
 		if (!!update) {
 			content = content + '\n\n\n+++\n\n\n' + update;
 		}
