@@ -69,6 +69,7 @@ export default {
 
 		var content = await Granary.getContent('Asimov/demo.mu');
 		content = content.replace(/https:\/\/upload-images\.jianshu\.io\/upload_images\//gi, '/image/');
+
 		this.$el.querySelector('.asimov .codePad pre').innerText = content;
 		var html = await MarkUp.parse(content, {
 			toc: true,
