@@ -32,9 +32,11 @@
 }
 .container .colorItem .name,
 .container .colorItem .color {
+	color: white;
 	text-shadow: 0px 0px 1px black, 1px 1px 3px rgba(23, 23, 23, 0.6);
 	pointer-events: none;
 }
+
 .container .colorItem .name {
 	margin-bottom: 5px;
 	font-size: 22px;

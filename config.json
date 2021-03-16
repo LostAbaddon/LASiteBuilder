@@ -219,5 +219,6 @@
 	"likeCoinX": {
 		"id": "lostabaddon",
 		"forbidden": ["myqcloud.com"]
-	}
+	},
+	"key": "./site.key"
 }
