@@ -7,6 +7,7 @@
 
 <script>
 require('@/assets/tabs.css');
+var selector = null;
 export default {
 	name: "Tabs",
 	props: {
@@ -16,12 +17,27 @@ export default {
 	},
 	methods: {
 		select (info) {
-			this.$emit('select', info);
+			if (!!selector) {
+				clearTimeout(selector);
+				selector = null;
+			}
+			if (info.key === this.selected) return;
+			selector = setTimeout(() => {
+				this.$emit('select', info);
+			}, 100);
 		},
 		newTab () {
+			if (!!selector) {
+				clearTimeout(selector);
+				selector = null;
+			}
 			this.$emit('newTab');
 		},
 		close (info) {
+			if (!!selector) {
+				clearTimeout(selector);
+				selector = null;
+			}
 			this.$emit('close', info);
 		}
 	}

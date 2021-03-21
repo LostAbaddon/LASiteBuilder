@@ -131,6 +131,8 @@ export default {
 			target.file = file;
 			target.value = 'file://' + file.name;
 			target.focus();
+
+			this.onSubmit();
 		},
 		onSubmit () {
 			var target = this.$refs.hint;
@@ -160,6 +162,8 @@ export default {
 			target.file = file;
 			target.value = 'file://' + file.name;
 			target.focus();
+
+			this.onSubmit();
 		},
 		active () {
 			var target = this.$refs.hint;
