@@ -39,14 +39,7 @@ export default {
 	},
 	methods: {
 		onClick (evt) {
-			var ele = evt.target;
-			if (!ele) return;
-			var target = ele.getAttribute('href');
-			if (!target) return;
-			if (target.indexOf('#') !== 0) return;
-			target = target.replace(/#+/, '/');
-			this.$router.push({path: target});
-			evt.preventDefault();
+			onVueHyperLinkTriggered(this, evt);
 		}
 	}
 }

@@ -211,6 +211,11 @@
 							"category": "latex"
 						}
 					]
+				},
+				{
+					"name": "常用数据",
+					"type": "article",
+					"category": "library/data.md"
 				}
 			]
 		}
