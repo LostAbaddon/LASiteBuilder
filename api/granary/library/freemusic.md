@@ -1,8 +1,6 @@
-<template>
-	<div class="viewer">
-		<Crumb target="library" />
-		<div class="container markup"><pre>
-# 无版权音乐/音效/音频资源网站收藏表
+标题：无版权音乐/音效/音频资源网站收藏表
+作者：LostAbaddon
+更新：2021.02.27 1:29
 
 
 > [danger] {|}无版权 ≠ 免费
@@ -54,18 +52,3 @@
 	日式音乐素材
 -	[HurtRecord](https://www.hurtrecord.com/)
 	版权免费BGM发布网站
-		</pre></div>
-	</div>
-</template>
-
-<style scoped>
-</style>
-
-<script>
-export default {
-	name: "freemusic",
-	mounted () {
-		callPageLoaded();
-	}
-}
-</script>
