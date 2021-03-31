@@ -44,7 +44,7 @@ export default {
 				loadJS('/js/ballcrush.js'),
 				loadCSS('/css/ballcrush.css')
 			]);
-			needLoad = true;
+			needLoad = false;
 		}
 		BallCrush.init();
 

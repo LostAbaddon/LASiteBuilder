@@ -162,6 +162,11 @@
 					"category": "rushgo"
 				},
 				{
+					"name": "反应锻炼",
+					"type": "page",
+					"category": "training"
+				},
+				{
 					"name": "三消俄罗斯方块（迁移中）",
 					"type": "page",
 					"category": "tritetris"

@@ -140,7 +140,7 @@ export default {
 			await Promise.all([
 				loadJS('/js/rushgo/ai_four.js'),
 			]);
-			needLoad = true;
+			needLoad = false;
 		}
 		RushGo.init();
 
