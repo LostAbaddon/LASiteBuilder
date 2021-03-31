@@ -332,6 +332,7 @@
 	window.TrainingQuest = {
 		onLoad (container, scorePad, page1, page2) {
 			if (ModuleActived) return;
+			ModuleActived = true;
 
 			if (!!timer) clearTimeout(timer);
 			Container = container;
@@ -346,13 +347,12 @@
 			ScorePad._score = ScorePad.querySelector('span.score');
 			ScorePad._countdown = ScorePad.querySelector('span.countdown');
 
-			ModuleActived = true;
-
 			NewQuest();
 		},
 		onLeave () {
 			if (!ModuleActived) return;
 			if (location.hash === '#/entertain/training') return;
+			ModuleActived = false;
 
 			// 清除内容
 			Container.removeEventListener('click', onClick);
@@ -361,11 +361,9 @@
 			Pages[1].innerHTML = '';
 			ScorePad.innerHTML = '';
 			Pages.clear();
-			ScorePad = null;
 			delete ScorePad._hint;
 			delete ScorePad._countdown;
-
-			ModuleActived = false;
+			ScorePad = null;
 		},
 	};
 }) ();
