@@ -6,7 +6,7 @@
 </template>
 
 <script>
-require('@/assets/tabs.css');
+loadCSS('/css/tabs.css');
 var selector = null;
 export default {
 	name: "Tabs",
