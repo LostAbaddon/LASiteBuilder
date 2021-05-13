@@ -150,31 +150,64 @@
 
 	class HistoryItem {
 		content = '';
-		start = -1;
-		end = -1;
-		scroll = 0
+		startNode = 0;
+		startOffset = 0;
+		endNode = 0;
+		endOffset = 0;
 	}
 	const HistoryManager = {
 		history: [],
 		index: -1,
-		append: item => {
+		editor: null,
+		append (content, startNode, startOffset, endNode, endOffset) {
+			var history = new HistoryItem();
+			history.content = content;
+			history.startNode = startNode;
+			history.startOffset = startOffset;
+			history.endNode = endNode;
+			history.endOffset = endOffset;
+
 			HistoryManager.index ++;
 			HistoryManager.history.splice(HistoryManager.index, HistoryManager.history.length);
-			HistoryManager.history[HistoryManager.index] = item;
+			HistoryManager.history.push(history);
 		},
-		restore: () => {
-			if (HistoryManager.index < 0) return null;
+		restore () {
+			if (HistoryManager.index <= 0) return;
 			HistoryManager.index --;
-			return HistoryManager.history[HistoryManager.index];
+			HistoryManager.recall();
 		},
-		redo: () => {
-			if (HistoryManager.index === HistoryManager.history.length) return null;
+		redo () {
+			if (HistoryManager.index === HistoryManager.history.length - 1) return;
 			HistoryManager.index ++;
-			return HistoryManager.history[HistoryManager.index];
+			HistoryManager.recall();
 		},
-		clear: () => {
+		recall (history) {
+			var history = HistoryManager.history[HistoryManager.index];
+			if (!history) return;
+
+			HistoryManager.editor.innerText = history.content;
+			var all = [].map.call(HistoryManager.editor.childNodes, n => n);
+			var startNode = all[history.startNode < 0 ? 0 : history.startNode];
+			var endNode = all[history.endNode >= all.length ? all.length - 1 : history.endNode];
+			var selection = document.getSelection();
+			var range = selection.getRangeAt(0);
+			range.setStart(startNode, history.startOffset);
+			range.setEnd(endNode, history.endOffset);
+			selection.removeAllRanges();
+			selection.addRange(range);
+			if (startNode.tagName === 'BR') {
+				startNode.scrollIntoViewIfNeeded();
+			}
+			else if (!!startNode.nextElementSibling) {
+				startNode.nextElementSibling.scrollIntoViewIfNeeded();
+			}
+			else if (!!startNode.previousElementSibling) {
+				startNode.previousElementSibling.scrollIntoViewIfNeeded();
+			}
+		},
+		clear () {
 			HistoryManager.index = -1;
-			HistoryManager.history = [];
+			HistoryManager.history.splice(0, HistoryManager.history.length);
 		},
 	};
 
@@ -197,6 +230,8 @@
 
 	if (!window.initMarkUpEditor) {
 		window.initMarkUpEditor = (vue, MUToolbar, MUEditor, MUPreview, FileLoader) => {
+			var lastContent = '', saveHistory = false;
+
 			const ContentController = {
 				selection: null,
 				range: null,
@@ -434,37 +469,95 @@
 						}
 					};
 				},
+				rearrangeAll () {
+					// 整理所有内容
+					var all = [].map.call(MUEditor.childNodes, n => n);
+					var selection = document.getSelection();
+					var range = selection.getRangeAt(0);
+					var startNode = range.startContainer, endNode = range.endContainer;
+					var startOffset = range.startOffset, endOffset = range.endOffset;
+					if (startNode === MUEditor) {
+						startNode = all[startOffset];
+						if (!startNode) return;
+						startOffset = 0;
+					}
+					if (endNode === MUEditor) {
+						endNode = all[endOffset];
+						if (!endNode) return;
+						endOffset = 0;
+					}
+					var lines = [], line = [];
+					for (let i = 0; i < all.length; i ++) {
+						let n = all[i];
+						if (n.tagName === 'BR') {
+							lines.push(line);
+							line = [];
+						}
+						else {
+							line.push(n);
+						}
+					}
+					if (line.length > 0) lines.push(line);
+					lines = lines.filter(line => line.length > 0);
+					var changed = false;
+					lines.forEach(line => {
+						if (line.length === 1) return;
+						changed = true;
+						var n = line[0];
+						var isStart = false;
+						var isEnd = false;
+						var ind = -1;
+						ind = line.indexOf(startNode);
+						if (ind >= 0) {
+							isStart = true;
+							startNode = n;
+							for (let i = 0; i < ind; i ++) {
+								startOffset += line[i].textContent?.length || 0;
+							}
+						}
+						ind = line.indexOf(endNode);
+						if (ind >= 0) {
+							isEnd = true;
+							endNode = n;
+							for (let i = 0; i < ind; i ++) {
+								endOffset += line[i].textContent?.length || 0;
+							}
+						}
+						n.textContent = n.wholeText;
+						for (let i = 1; i < line.length; i ++) {
+							MUEditor.removeChild(line[i]);
+						}
+					});
+					if (!all.last.tagName) {
+						let n = document.createElement('br');
+						MUEditor.appendChild(n);
+						changed = true;
+					}
+					if (changed) all = [].map.call(MUEditor.childNodes, n => n);
 
+					// 获取整行
+					var startIndex = all.indexOf(startNode), endIndex = all.indexOf(endNode);
+					if (startIndex > endIndex) {
+						[startIndex, endIndex] = [endIndex, startIndex];
+						[startNode, endNode] = [endNode, startNode];
+						[startOffset, endOffset] = [endOffset, startOffset];
+					}
+					if (startNode.tagName === 'BR') {
+						let n = all[startIndex - 1];
+						if (!!n && !n.tagName) {
+							startNode = n;
+							startIndex --;
+						}
+					}
+					if (endNode.tagName !== 'BR') {
+						let n = all[endIndex + 1];
+						if (!!n && n.tagName === 'BR') {
+							endNode = n;
+							endIndex ++;
+						}
+					}
 
-				restore: (start, end) => {
-					ContentController.start = start;
-					ContentController.end = end;
-					ContentController.text = ContentController.contents.join('\n');
-					ContentController.ui.value = ContentController.text;
-					ContentController.ui.selectionStart = start;
-					ContentController.ui.selectionEnd = end;
-				},
-				getPos: (lineID, charID) => {
-					var result = 0;
-					for (let i = 0; i < lineID; i ++) {
-						let line = ContentController.contents[i] || '';
-						result += line.length + 1;
-					}
-					result += charID;
-					return result;
-				},
-				getCoor: pos => {
-					var part = ContentController.text.substring(0, pos);
-					part = part.match(/\n/g);
-					if (!part) {
-						return [0, pos];
-					}
-					else {
-						let lid = part.length;
-						let pre = ContentController.getPos(lid, 0);
-						let cid = pos - pre;
-						return [lid, cid];
-					}
+					return {all, startNode, startIndex, startOffset, endNode, endIndex, endOffset};
 				},
 			};
 
@@ -657,36 +750,52 @@
 				return true;
 			};
 			const moveBlock = (isUp=true) => {
-				var startLine = ContentController.startLine;
-				var endLine = ContentController.endLine;
+				// 整理所有内容
+				var {all, startNode, startIndex, startOffset, endNode, endIndex, endOffset} = ContentController.rearrangeAll();
 
-				if (isUp && startLine === 0) return false;
-				if (!isUp && endLine === ContentController.lineCount - 1) return false;
-
-				var target = isUp ? startLine - 1 : endLine + 1;
-				var content = ContentController.contents[target];
-
+				// 移动
 				if (isUp) {
-					for (let i = startLine; i <= endLine; i ++) {
-						ContentController.contents[i - 1] = ContentController.contents[i];
+					if (startIndex === 0) return changed;
+					let isBR = false, target = -1;
+					for (let i = startIndex - 1; i >= 0; i --) {
+						let n = all[i];
+						if (n.tagName === 'BR') {
+							if (isBR) {
+								target = i + 1;
+								break;
+							}
+							else {
+								isBR = true;
+							}
+						}
 					}
-					ContentController.contents[endLine] = content;
-					startLine --;
-					endLine --;
+					let next = all[endIndex + 1];
+					for (let i = startIndex - 1; i >= target; i --) {
+						let n = all[i];
+						MUEditor.insertBefore(n, next);
+						next = n;
+					}
+					changed = true;
 				}
 				else {
-					for (let i = endLine; i >= startLine; i --) {
-						ContentController.contents[i + 1] = ContentController.contents[i];
+					if (endIndex === all.length - 1) return changed;
+					let target = -1;
+					for (let i = endIndex + 1; i < all.length; i ++) {
+						let n = all[i];
+						if (n.tagName === 'BR') {
+							target = i;
+							break;
+						}
 					}
-					ContentController.contents[startLine] = content;
-					startLine ++;
-					endLine ++;
+					let prev = all[startIndex];
+					for (let i = endIndex + 1; i <= target; i ++) {
+						let n = all[i];
+						MUEditor.insertBefore(n, prev);
+					}
+					changed = true;
 				}
 
-				var start = ContentController.getPos(startLine, 0);
-				var end = ContentController.getPos(endLine + 1, 0) - 1;
-				ContentController.restore(start, end);
-				return true;
+				return changed;
 			};
 			const togglePara = (tag, param) => {
 				var info = ContentController.getSelStruction();
@@ -704,28 +813,22 @@
 				var startNode = lines.first;
 				var endNode = lines.last;
 				var selection = document.getSelection(), range = document.createRange();
-				range.setStart(startPos, 0);
-				range.setEnd(endPos, endPos.textContent.length);
+				range.setStart(startNode, 0);
+				range.setEnd(endNode, endNode.textContent.length);
 				selection.removeAllRanges();
 				selection.addRange(range);
 
 				return true;
 			};
 			const deleteLine = () => {
-				var lineID = ContentController.startLine;
-				if (ContentController.lineCount === 0) {
-					ContentController.contents.push('');
-					lineID = 0;
-				}
-				else if (ContentController.lineCount === 1) {
-					ContentController.contents[0] = '';
-				}
-				else {
-					ContentController.contents.splice(lineID, ContentController.endLine - lineID + 1);
+				// 整理所有内容
+				var {all, startNode, startIndex, startOffset, endNode, endIndex, endOffset} = ContentController.rearrangeAll();
+
+				for (let i = startIndex; i <= endIndex; i ++) {
+					let n = all[i];
+					MUEditor.removeChild(n);
 				}
 
-				var pos = ContentController.getPos(lineID, 0);
-				ContentController.restore(pos, pos);
 				return true;
 			};
 			const generateTable = () => {
@@ -778,7 +881,7 @@
 				table = '<br>' + table.join('<br>') + '<br>';
 				document.execCommand('insertHTML', false, table);
 
-				onEdited();
+				onEdited(true);
 			};
 			const generateMark = (title, key) => {
 				if (ContentController.startNode !== ContentController.endNode) {
@@ -816,7 +919,7 @@
 				}
 				document.execCommand('insertHTML', false, content);
 
-				if (key === 'anchor') return onEdited();
+				if (key === 'anchor') return onEdited(true);
 
 				var pos = '[' + mark + ']: ';
 				var br = newEle('br'), node = document.createTextNode(pos);
@@ -836,7 +939,7 @@
 				ContentController.selection.removeAllRanges();
 				ContentController.selection.addRange(range);
 
-				onEdited();
+				onEdited(true);
 			};
 			const generateIcon = () => {
 				if (ContentController.startNode !== ContentController.endNode) {
@@ -852,7 +955,7 @@
 						ContentController.restoreRange();
 						if (result === 'cancel' || !value) return;
 						document.execCommand('insertHTML', false, ' :' + value + ': ');
-						onEdited();
+						onEdited(true);
 					}
 				});
 			};
@@ -952,7 +1055,7 @@
 					selection.addRange(range);
 				}
 
-				onEdited();
+				onEdited(true);
 			};
 			const generateRefBlock = () => {
 				var inner = '<div class="table-generator" style="text-align:center;">';
@@ -1001,7 +1104,7 @@
 					selection.addRange(range);
 				}
 
-				onEdited();
+				onEdited(true);
 			};
 			const generateBlock = (tag) => {
 				var info = ContentController.getSelStruction();
@@ -1165,7 +1268,7 @@
 						content: reader.result,
 						usage: []
 					};
-					onEdited(false);
+					onEdited(true);
 					return;
 				};
 				reader.readAsText(file);
@@ -1178,47 +1281,22 @@
 
 			const controlHandler = (key, fromKB=false) => {
 				var result = false;
-				var saveHistory = true;
 				ContentController.update();
 
 				var content = MUEditor.value;
 				if (lastContent !== content) {
-					let history = new HistoryItem();
-					history.content = content;
-					history.start = MUEditor.selectionStart;
-					history.end = MUEditor.selectionEnd;
-					history.scroll = MUEditor.scrollTop;
-					HistoryManager.append(history);
+					saveHistory = true;
 				}
 
 				if (key === 'restoreManipulation') {
 					saveHistory = false;
-
-					let item = HistoryManager.restore();
-					if (!!item) {
-						MUEditor.value = item.content;
-						MUEditor.selectionStart = item.start;
-						MUEditor.selectionEnd = item.end;
-						// MUEditor.scrollTo(0, item.scroll);
-						return true;
-					}
-					else {
-						return false;
-					}
+					HistoryManager.restore();
+					return true;
 				}
 				else if (key === 'redoManipulation') {
 					saveHistory = false;
-					let item = HistoryManager.redo();
-					if (!!item) {
-						MUEditor.value = item.content;
-						MUEditor.selectionStart = item.start;
-						MUEditor.selectionEnd = item.end;
-						// MUEditor.scrollTo(0, item.scroll);
-						return true;
-					}
-					else {
-						return false;
-					}
+					HistoryManager.redo();
+					return true;
 				}
 
 				else if (key === 'TabIndent') {
@@ -1446,36 +1524,8 @@
 					return true;
 				}
 				else if (key === 'close') {
-					console.log('[TEST] closing!!!');
 					vue.$router.push({path: '/'});
 					return true;
-
-					if (isHelping) {
-						isHelping = false;
-						HistoryManager.clear();
-						HistoryManager.index = HistoryManager._index;
-						HistoryManager.history = HistoryManager._history;
-						delete HistoryManager._index;
-						delete HistoryManager._history;
-						MUEditor.value = sessionStorage.content;
-						onEdited();
-						return true;
-					}
-					else if (fileCategory === 1) {
-						let addr = location.origin + '/page/archieve.html?fingerprint=' + articleConfig.fingerprint;
-						location.href = addr;
-						return true;
-					}
-					else if (fileCategory === 2) {
-						let addr = location.origin + '/library/view.html?id=' + articleConfig.id;
-						location.href = addr;
-						return true;
-					}
-					else {
-						let addr = location.origin + '/library/index.html';
-						location.href = addr;
-						return true;
-					}
 				}
 				else if (key === 'save-article') {
 					downloadMU();
@@ -1492,6 +1542,8 @@
 					MUEditor.innerText = '';
 					MUPreview.innerHTML = '';
 					MUEditor.focus();
+					HistoryManager.clear();
+					HistoryManager.append('', 0, 0, 0, 0);
 					return true;
 				}
 
@@ -1688,17 +1740,46 @@
 			};
 			const onKey = evt => {
 				if (evt.which === 13) {
-					document.execCommand('insertHTML', false, '<span class="placeholder"></span>');
-					let content = MUEditor.innerHTML;
-					content = content.replace('<span class="placeholder"></span>', '<br><span class="placeholder"></span>');
-					MUEditor.innerHTML = content;
+					// 插入新行
+					let selection = document.getSelection(), range = selection.getRangeAt(0);
+					let insert = '<br>';
+					let emptyLast = true;
+					if (range.collapsed) {
+						let content = range.startContainer.wholeText;
+						if (!!content) {
+							let header = content.match(/^([ 　\t>\+\-\*]|\d+\.)*/) || [];
+							header = header[0] || '';
+							if (header.length > 0) emptyLast = false;
+							insert += header;
+						}
+					}
+					insert = insert + '<span class="placeholder"></span>';
+					document.execCommand('insertHTML', false, insert);
+
+					// 定位光标
 					let placeholder = MUEditor.querySelector('span.placeholder');
 					placeholder.scrollIntoViewIfNeeded();
 					let node = document.createTextNode('test');
 					MUEditor.insertBefore(node, placeholder);
 					MUEditor.removeChild(placeholder);
 
-					let selection = document.getSelection(), range = selection.getRangeAt(0);
+					// 整理尾部内容
+					let all = [].map.call(MUEditor.childNodes, n => n);
+					all.reverse();
+					let removeList = [];
+					all.some((node, i) => {
+						if (!!node.tagName) return true;
+						if (node.textContent.length === 0) {
+							MUEditor.removeChild(node);
+							removeList.push(i);
+							return;
+						}
+						return true;
+					});
+					removeList.reverse().forEach(i => all.splice(i, 1));
+					all.reverse();
+
+					range = selection.getRangeAt(0);
 					selection.removeAllRanges();
 					range = document.createRange();
 					range.selectNode(node);
@@ -1706,11 +1787,18 @@
 					node.textContent = '';
 					range.collapse();
 
+					// 末尾处理
+					if (all.last === node && emptyLast) {
+						document.execCommand('insertHTML', false, '<br><br>');
+					}
+
 					evt.preventDefault();
 					return false;
 				}
 
 				if (![16, 17, 18, 91].includes(evt.which)) {
+					saveHistory = true;
+
 					let keyPair = [];
 					if (evt.ctrlKey) keyPair.push('ctrl');
 					if (evt.altKey) keyPair.push('alt');
@@ -1804,15 +1892,17 @@
 				MUEditor.selectionEnd = start;
 				evt.preventDefault();
 			};
-			const onEdited = async (saveHistory=true) => {
+			const onEdited = (saveHistory=false) => {
 				if (!!changer) {
 					clearTimeout(changer);
 					changer = null;
 				}
 
 				var content = MUEditor.innerText;
+				content = content.replace(/\n*$/gi, '');
 				if (lastContent === content) return;
 				lastContent = content;
+				var origin = content;
 
 				content = content.split('\n');
 				var isMark = false, isBlock = '';
@@ -1830,15 +1920,19 @@
 					return bra + prefix + ket;
 				});
 				content = content.join('\n')
+				markupDoc(content);
 
-				var markup = await MarkUp.fullParse(content, {
-					showtitle: true,
-					classname: 'markup-content',
-				});
-				MUPreview.innerHTML = markup.content;
-				MUToolbar.uiWordCount.innerText = markup.wordCount;
-				FileTitle = markup.title;
-				await afterMarkUp();
+				if (!saveHistory) return;
+				var selection = document.getSelection();
+				var range = selection.getRangeAt(0);
+				var {all, startNode, startIndex, startOffset, endNode, endIndex, endOffset} = ContentController.rearrangeAll();
+				HistoryManager.append(origin, startIndex, startOffset, endIndex - 1, endOffset);
+				if (endNode.tagName === 'BR') endNode = endNode.previousSibling;
+				if (!startNode || !endNode) return;
+				range.setStart(startNode, startOffset);
+				range.setEnd(endNode, endOffset);
+				selection.removeAllRanges();
+				selection.addRange(range);
 			};
 			const onBlur = () => {
 				ContentController.saveRange();
@@ -1854,7 +1948,7 @@
 					clearTimeout(changer);
 					changer = null;
 				}
-				changer = setTimeout(onEdited, 1000);
+				changer = setTimeout(() => onEdited(saveHistory), 1000);
 			};
 			const onMoved = () => {
 				if (!!mover) {
@@ -1941,6 +2035,18 @@
 				}
 				mover = setTimeout(onMoved, 100);
 			};
+			const markupDoc = async (content) => {
+				var markup = await MarkUp.fullParse(content, {
+					showtitle: true,
+					classname: 'markup-content',
+				});
+				MUPreview.innerHTML = markup.content;
+				MUToolbar.uiWordCount.innerText = markup.wordCount;
+				FileTitle = markup.title;
+				await afterMarkUp();
+			};
+
+			HistoryManager.editor = MUEditor;
 			MUEditor.addEventListener('keydown', onKey);
 			MUEditor.addEventListener('keyup', onChange);
 			MUEditor.addEventListener('paste', onPaste);
@@ -1953,260 +2059,6 @@
 			document.execCommand("defaultParagraphSeparator", false, "br");
 			document.execCommand("insertbronreturn", false, true);
 			MUToolbar.uiWordCount = MUToolbar.querySelector('div.wordcount-hint span.count');
-
-
-
-
-
-			return;
-
-			var lastContent = '', articleConfig = {}, helpContent = '', isHelping = false;
-			var LaTeXMap = new Map(), contentMap = {};
-			const scrollViewTo = to => {
-				var curr = MUPreview.scrollTop;
-				if (curr === to) return;
-				var next;
-				if (to > curr) {
-					let delta = (to - curr) * ScrollRate;
-					if (delta < ScrollSpeed) delta = ScrollSpeed;
-					next = curr + delta;
-					if (next > to) next = to;
-				}
-				else {
-					let delta = (curr - to) * ScrollRate;
-					if (delta < ScrollSpeed) delta = ScrollSpeed;
-					next = curr - delta;
-					if (next < to) next = to;
-				}
-				MUPreview.scrollTo(0, next);
-				if (next !== to) {
-					scroller = setTimeout(() => scrollViewTo(to), 50);
-				}
-			};
-
-			const num2time = num => {
-				var time = new Date(num);
-				var Y = (time.getYear() + 1900) + '';
-				var M = (time.getMonth() + 1) + '';
-				var D = time.getDate() + '';
-				var h = time.getHours() + '';
-				var m = time.getMinutes() + '';
-				var s = time.getSeconds() + '';
-
-				if (M.length < 2) M = '0' + M;
-				if (D.length < 2) D = '0' + D;
-				if (h.length < 1) h = '00';
-				else if (h.length < 2) h = '0' + h;
-				if (m.length < 1) m = '00';
-				else if (m.length < 2) m = '0' + m;
-				if (s.length < 1) s = '00';
-				else if (s.length < 2) s = '0' + s;
-				return Y + '/' + M + '/' + D + ' ' + h + ':' + m + ':' + s;
-			};
-
-
-			chrome.runtime.onMessage.addListener(msg => {
-				if (msg.event === "GetArticleByID") getArticleByID(msg.data);
-			});
-
-			var archieveDB, backendResponser;
-			const loadArchieve = fingerprint => new Promise(async res => {
-				if (!fingerprint) {
-					let article = {
-						fingerprint: '',
-						title: '无存档',
-						update: Date.now(),
-						content: '',
-						usage: []
-					};
-					return res(article);
-				}
-
-				archieveDB = new CachedDB('ArchieveCache', 1);
-				await archieveDB.connect();
-
-				var article = await archieveDB.get('cache', fingerprint);
-				if (!article) {
-					article = {
-						fingerprint: '',
-						title: '无存档',
-						update: Date.now(),
-						content: '',
-						usage: []
-					};
-				}
-				else {
-					article.fingerprint = fingerprint;
-				}
-
-				res(article);
-			});
-			const loadArticle = id => new Promise(res => {
-				if (!!backendResponser) backendResponser();
-				backendResponser = res;
-				chrome.runtime.sendMessage({ event: 'GetArticleByID', id });
-			});
-			const getArticleByID = article => {
-				var cb = backendResponser;
-				backendResponser = null;
-				if (!!cb) cb(article);
-			};
-			const loadHelp = () => new Promise(res => {
-				var xhr = new XMLHttpRequest();
-				xhr.open('get', './demo.mu', true);
-				xhr.onreadystatechange = () => {
-					if (xhr.readyState == 4) {
-						if (xhr.status === 0 || xhr.response === '') return res(null);
-						var text = xhr.responseText;
-						if (!text) text = '本文档无内容';
-						res(text);
-					}
-				};
-				xhr.send();
-			});
-
-			var Socket;
-			const Responsers = {};
-			Responsers.saveResource = (data, err) => {
-				if (!data.ok) {
-					Alert.show(err.message || err, '上传失败');
-					return;
-				}
-				Alert.notify('上传成功');
-				var placeholder = '[图片(' + data.target + ')上传中……]';
-				var image = '![' + data.name + '](' + data.url + ')';
-
-				var content = MUEditor.value;
-				var start = MUEditor.selectionStart;
-				var end = MUEditor.selectionEnd;
-				var found = true;
-				while (found) {
-					found = false;
-					content = content.replace(placeholder, (match, pos) => {
-						found = true;
-						start = pos;
-						end = start + image.length;
-						return image;
-					});
-				}
-				MUEditor.value = content;
-				MUEditor.selectionStart = start;
-				MUEditor.selectionEnd = start + image.length;
-			};
-			const sendToServer = (event, data) => {
-				if (!Socket) return;
-				Socket.emit('__message__', {event, data});
-			};
-			const initSocket = () => {
-				Socket.on('__message__', msg => {
-					cb = Responsers[msg.event];
-					if (!cb) return;
-					cb(msg.data);
-				});
-			};
-
-			chrome.runtime.sendMessage({ event: 'GetBackendServer' });
-			(async () => {
-				var query = {};
-				var search = location.search;
-				search = search.substring(1, search.length);
-				search = search.split('&').map(k => k.trim()).filter(k => k.length > 0);
-				search.forEach(item => {
-					item = item.split('=');
-					var key = item.splice(0, 1)[0];
-					var value = item.join('=');
-					query[key] = value;
-				});
-
-				var article, help, actions = [];
-				actions.push(new Promise(async res => {help = await loadHelp(); res();}));
-
-				if (!!query.article) {
-					fileCategory = 1;
-					buildToolBar(1);
-					actions.push(new Promise(async res => {article = await loadArchieve(query.article); res();}));
-				}
-				else if (!!query.id) {
-					fileCategory = 2;
-					buildToolBar(0);
-					actions.push(new Promise(async res => {article = await loadArticle(query.id); res();}));
-				}
-				else {
-					fileCategory = 0;
-					buildToolBar(0);
-				}
-
-				await Promise.all(actions);
-
-				if (!article || !article.content) {
-					if (!article) article = {};
-					if (query.action === 'NewFile') {
-						article.content = '标题：新文档\n简介：还没\n关键词：没有\n更新：' + num2time(Date.now()) + '\nTOC: on\nGLOSSARY: on\nRESOURCES: on\n\n请开始你的写作……';
-						article.title = '';
-					}
-					else {
-						article.content = help;
-						article.title = 'MarkUp 帮助文档';
-					}
-				}
-
-				Object.keys(article).forEach(key => {
-					if (key === 'title' && fileCategory !== 1) return;
-					var value = article[key];
-					if (!value) return;
-					articleConfig[key] = value;
-				});
-				articleConfig.showtitle = true;
-				if (query.action === 'NewFile') articleConfig.fingerprint = 'NewFile';
-
-				helpContent = help;
-				MUEditor.value = article.content;
-				onEdited(false);
-				var history = new HistoryItem();
-				history.content = article.content;
-				history.start = 0;
-				history.end = 0;
-				history.scroll = 0;
-				HistoryManager.clear();
-				HistoryManager.append(history);
-			}) ();
-
-			chrome.runtime.onMessage.addListener(msg => {
-				if (msg.event === 'ArchieveModified') {
-					if (msg.ok) {
-						articleConfig.fingerprint = msg.fingerprint
-					}
-				}
-				else if (msg.event === 'SaveArticle') {
-					if (msg.saved && fileCategory === 1) {
-						location.href = './editor.html?id=' + msg.id;
-					}
-				}
-				else if (msg.event === 'GetBackendServer') {
-					let url = 'http://' + msg.data.host + ':' + msg.data.port + '/socket.io/socket.io.js';
-					let xhr = new XMLHttpRequest();
-					xhr.open('GET', url, true);
-					xhr.onreadystatechange = () => {
-						if (xhr.readyState == 4) {
-							if (xhr.status === 0 || xhr.response === '') return;
-							try {
-								eval(xhr.responseText);
-								Socket = io.connect('http://' + msg.data.host + ':' + msg.data.port);
-								if (!!Socket) {
-									document.body.classList.add('socketed');
-									initSocket();
-								}
-							}
-							catch (err) {
-								console.error(err);
-							}
-						}
-					};
-					xhr.send();
-				}
-			});
-
-			InitNotes(MUPreview);
 		};
 	}
 }) ();
