@@ -207,24 +207,24 @@
 				startOffset: 0,
 				endNode: null,
 				endOffset: 0,
-				saveRange: () => {
+
+				saveRange () {
 					ContentController.selection = document.getSelection();
 					ContentController.range = ContentController.selection.getRangeAt(0);
 				},
-				restoreRange: () => {
+				restoreRange () {
 					if (!ContentController.range) return;
 					ContentController.selection = document.getSelection();
 					ContentController.selection.removeAllRanges();
 					ContentController.selection.addRange(ContentController.range);
 				},
-				update: () => {
+				update () {
 					ContentController.content = MUEditor.innerText;
 					ContentController.nodes = [].map.call(MUEditor.childNodes, n => n);
 					ContentController.texts = ContentController.nodes.filter(n => n.nodeName === '#text');
 
 					var selection = document.getSelection(), range;
 					if (MUEditor !== selection.focusNode && !ContentController.nodes.includes(selection.focusNode)) {
-						MUEditor.focus();
 						ContentController.restoreRange();
 						range = ContentController.range;
 					}
@@ -288,7 +288,7 @@
 						ContentController.endOffset = range.endOffset;
 					}
 				},
-				getSurrounding: (prefix='', pstfix='') => {
+				getSurrounding (prefix='', pstfix='') {
 					pstfix = pstfix || prefix;
 
 					var text = ContentController.startNode.textContent;
@@ -310,7 +310,7 @@
 
 					return [true, startOffset, offset + endOffset + pstfix.length];
 				},
-				addPair: (prefix, pstfix, start, end) => {
+				addPair (prefix, pstfix, start, end) {
 					var r = document.createRange();
 					r.setStart(ContentController.endNode, end);
 					r.setEnd(ContentController.endNode, end);
@@ -336,7 +336,7 @@
 					ContentController.selection.removeAllRanges();
 					ContentController.selection.addRange(r);
 				},
-				removePair: (prefix, pstfix, start, end) => {
+				removePair (prefix, pstfix, start, end) {
 					var content = ContentController.endNode.textContent;
 					var bra = content.substring(0, end - pstfix.length), ket = content.substring(end, content.length);
 					ContentController.endNode.textContent = bra + ket;
@@ -355,6 +355,84 @@
 					}
 					ContentController.selection.removeAllRanges();
 					ContentController.selection.addRange(r);
+				},
+				getSelStruction () {
+					var all = [].map.call(MUEditor.childNodes, n => n);
+					var startNode = all.indexOf(ContentController.startNode);
+					var endNode = all.indexOf(ContentController.endNode);
+					var startPos = startNode, endPos = endNode;
+					var startOffset = ContentController.startOffset;
+					var endOffset = ContentController.endNode.textContent.length - ContentController.endOffset;
+
+					for (let i = startNode; i >= 0; i --) {
+						let n = all[i];
+						if (n.tagName === 'BR') {
+							break;
+						}
+						startNode = i;
+					}
+					for (let i = endNode; i < all.length; i ++) {
+						let n = all[i];
+						if (n.tagName === 'BR') {
+							break;
+						}
+						endNode = i;
+					}
+					for (let i = startNode; i < startPos; i ++) {
+						let n = all[i];
+						n = n.textContent;
+						startOffset += n.length;
+					}
+					for (let i = endPos + 1; i <= endNode; i ++) {
+						let n = all[i];
+						n = n.textContent;
+						endOffset += n.length;
+					}
+
+					// 整理内容
+					var lines = [], line = [];
+					for (let i = startNode; i <= endNode; i ++) {
+						let n = all[i];
+						if (n.tagName === 'BR') {
+							lines.unshift(line);
+							line = [];
+						}
+						else {
+							line.push([n, i]);
+						}
+					}
+					lines.unshift(line);
+					lines.forEach(line => {
+						if (line.length < 2) return;
+						var ctx = '';
+						line.forEach(node => {
+							ctx += node[0].textContent;
+						});
+						line[0][0].textContent = ctx;
+						for (let i = line.length - 1; i > 0; i --) {
+							MUEditor.removeChild(line[i][0]);
+						}
+						all.splice(line[0][1] + 1, line.length - 1);
+					});
+					lines = lines.filter(line => line.length > 0);
+					lines = lines.map(line => line[0][0]);
+					lines.reverse();
+					endOffset = lines.last.textContent.length - endOffset;
+
+					return {
+						nodes: all,
+						selection: {
+							lines: lines,
+							start: {
+								node: startNode,
+								offset: startOffset
+							},
+							end: {
+								node: endNode,
+								offset: endOffset
+							}
+						}
+					};
 				},
 
 
@@ -452,78 +530,131 @@
 				}
 				return false; // 如果已经是底级了，就不操作了
 			};
-			const headerUp = (lineID) => {
-				var lineText = ContentController.contents[lineID];
-				var level = lineText.match(/^#+/);
-				level = !!level ? level.length : 0;
-				if (!lineText.match(/^[ 　\t#]/)) lineText = ' ' + lineText;
-				lineText = '#' + lineText;
-				ContentController.contents[lineID] = lineText;
-				return true;
+			const headerUp = (level, target, all) => {
+				var content = all[target].textContent;
+				content = String.blank(level, '#') + ' ' + content;
+				all[target].textContent = content;
 			};
-			const toggleHeaderHandler = (lineID, level) => {
-				var lineText = ContentController.contents[lineID];
-				var header = lineText.match(/^(#+)[ 　\t]+/);
-				var prefix = '';
-				for (let i = 0; i < level; i ++) prefix = prefix + '#';
-				if (!header) {
-					if (!lineText.match(/^[ 　\t#]/)) lineText = ' ' + lineText;
-					lineText = prefix + lineText;
+			const headerDown = (isUnder, target, all) => {
+				if (isUnder) {
+					MUEditor.removeChild(all[target + 1]);
+					MUEditor.removeChild(all[target + 2]);
+					all.splice(target + 1, 2);
 				}
 				else {
-					lineText = lineText.replace(header[0], '');
-					if (header[1].length !== level) {
-						lineText = prefix + ' ' + lineText;
+					let content = all[target].textContent;
+					content = content.replace(/^\#+[ 　\t]*/, '');
+					all[target].textContent = content;
+				}
+			};
+			const toggleHeader = (target, fromKB=false) => {
+				var info = ContentController.getSelStruction();
+				var all = info.nodes;
+				var startNode = info.selection.start.node;
+				var endNode = info.selection.end.node;
+				if (startNode !== endNode) return false;
+
+				var level = all[startNode].textContent.match(/[ 　]*(#+)/), isUnder = false; // 检查是否是行内标记
+				if (!level) {
+					level = 0;
+				}
+				else {
+					level = level[1].length || 0;
+				}
+
+				// 检查是否是行下标记
+				if (level === 0) {
+					let nextStart = startNode + 2, nextEnd = nextStart;
+					let ctx = '';
+					for (let i = nextStart; i < all.length; i ++) {
+						let n = all[i];
+						if (n.tagName === 'BR') break;
+						nextEnd = i;
+						ctx = ctx + n.textContent;
+					}
+
+					if (nextEnd > nextStart) {
+						all[nextStart].textContent = ctx;
+						for (let i = nextStart + 1; i <= nextEnd; i ++) {
+							MUEditor.removeChild(all[i]);
+						}
+						all.splice(nextStart + 1, nextEnd - nextStart);
+					}
+
+					if (ctx.match(/^={3,}$/)) {
+						level = 2;
+						isUnder = true;
+					}
+					else if (ctx.match(/^\-{3,}$/)) {
+						level = 1;
+						isUnder = true;
+					}
+					else {
+						level = 0;
 					}
 				}
-				ContentController.contents[lineID] = lineText;
-				return true;
-			};
-			const toggleHeader = (level, fromKB=false) => {
-				var changed = false;
-				for (let i = ContentController.startLine; i <= ContentController.endLine; i ++) {
-					let c;
-					if (fromKB) c = headerUp(i);
-					else c = toggleHeaderHandler(i, level);
-					if (c) changed = true;
+
+				if (level === 0) {
+					headerUp(target, startNode, all);
 				}
-
-				var start = ContentController.getPos(ContentController.startLine, 0);
-				var end = ContentController.getPos(ContentController.endLine + 1, 0) - 1;
-				ContentController.restore(start, end);
-
-				return changed;
-			};
-			const doMoveLevel = (isLevIn, lineID, doHeader=false) => {
-				var lineText = ContentController.contents[lineID];
-				if (!lineText || lineText.length === 0) return false;
-
-				var head = lineText.match(/^( {4}|　{2}|\t[ 　]*|#[ 　\t]*|\+[ 　\t]*|\-[ 　\t]*|\*[ 　\t]*|~[ 　\t]*|>[ 　\t]*|\d+\.[ 　\t]*)/);
-				if (!head) {
-					if (isLevIn) lineText = '\t' + lineText;
-				}
-				else if (isLevIn) {
-					lineText = "\t" + lineText;
+				else if (level === target) {
+					headerDown(isUnder, startNode, all);
 				}
 				else {
-					lineText = lineText.replace(head[0], '');
+					headerDown(isUnder, startNode, all);
+					headerUp(target, startNode, all);
 				}
 
-				ContentController.contents[lineID] = lineText;
+				var content = all[startNode];
+				var selection = document.getSelection(), range = document.createRange();
+				range.setStart(content, 0);
+				range.setEnd(content, content.textContent.length);
+				selection.removeAllRanges();
+				selection.addRange(range);
+
 				return true;
 			};
-			const moveLevel = (isLevIn, doHeader=false) => {
-				var changed = false;
-				for (let i = ContentController.startLine; i <= ContentController.endLine; i ++) {
-					let c = doMoveLevel(isLevIn, i, doHeader);
-					if (c) changed = true;
-				}
-				if (!changed) return false;
+			const moveLevel = (isLevIn, fromKB=false) => {
+				var info = ContentController.getSelStruction();
+				var lines = info.selection.lines;
+				var startOffset = info.selection.start.offset;
+				var endOffset = info.selection.end.offset;
 
-				var start = ContentController.getPos(ContentController.startLine, 0);
-				var end = ContentController.getPos(ContentController.endLine + 1, 0) - 1;
-				ContentController.restore(start, end);
-				return changed;
+				var startNode = lines.first;
+				var endNode = lines.last;
+				var selection = document.getSelection(), range = document.createRange();
+
+				// 如果是缩进
+				if (isLevIn) {
+					// 键盘触发且在同一行同一位置
+					if (startNode === endNode && startOffset === endOffset && fromKB) {
+						range.setStart(startNode, startOffset);
+						range.setEnd(startNode, startOffset);
+						selection.removeAllRanges();
+						selection.addRange(range);
+						document.execCommand('insertHTML', false, '\t');
+					}
+					else {
+						lines.forEach(line => {
+							line.textContent = '\t' + line.textContent;
+						});
+						range.setStart(startNode, 0);
+						range.setEnd(endNode, endNode.textContent.length);
+						selection.removeAllRanges();
+						selection.addRange(range);
+					}
+				}
+				// 缩出
+				else {
+					lines.forEach(line => {
+						line.textContent = line.textContent.replace(/^\t/, '');
+					});
+					range.setStart(startNode, 0);
+					range.setEnd(endNode, endNode.textContent.length);
+					selection.removeAllRanges();
+					selection.addRange(range);
+				}
+				return true;
 			};
 			const moveBlock = (isUp=true) => {
 				var startLine = ContentController.startLine;
@@ -558,35 +689,26 @@
 				return true;
 			};
 			const togglePara = (tag, param) => {
-				var startLine = ContentController.startLine;
-				var startPos = ContentController.startPos;
-				var endLine = ContentController.endLine;
-				var endPos = ContentController.endPos;
-				var lineLen = ContentController.contents[startLine].length;
-				var start, end;
-				var prefix = tag + '\t';
-				if (!!param) prefix = prefix + '[' + param + '] ';
+				var info = ContentController.getSelStruction();
+				var all = info.nodes;
+				var lines = info.selection.lines;
 
-				if (startLine !== endLine || startPos !== endPos || lineLen === 0 || lineLen !== startPos) {
-					for (let i = startLine; i <= endLine; i ++) {
-						ContentController.contents[i] = prefix + ContentController.contents[i];
-					}
-					start = ContentController.getPos(startLine, 0);
-					end = ContentController.getPos(endLine + 1, 0) - 1;
-				}
-				else {
-					let next = ContentController.contents[startLine + 1];
-					if (next.length > 0) {
-						ContentController.contents.splice(startLine + 1, 0, '');
-					}
-					ContentController.contents.splice(startLine + 1, 0, prefix);
-					startLine ++;
-					startPos = prefix.length;
-					start = ContentController.getPos(startLine, startPos);
-					end = start;
+				var prefix = tag + '\t', firstPrefix = prefix;
+				if (!!param) firstPrefix = firstPrefix + '[' + param + '] ';
+
+				for (let i = 0; i < lines.length; i ++) {
+					let p = i === 0 ? firstPrefix : prefix;
+					lines[i].textContent = p + lines[i].textContent;
 				}
 
-				ContentController.restore(start, end);
+				var startNode = lines.first;
+				var endNode = lines.last;
+				var selection = document.getSelection(), range = document.createRange();
+				range.setStart(startPos, 0);
+				range.setEnd(endPos, endPos.textContent.length);
+				selection.removeAllRanges();
+				selection.addRange(range);
+
 				return true;
 			};
 			const deleteLine = () => {
@@ -606,64 +728,55 @@
 				ContentController.restore(pos, pos);
 				return true;
 			};
-			const generateTable = async () => {
-				var inner = '<div class="table-generator">';
+			const generateTable = () => {
+				var inner = '<div class="table-generator" style="text-align:center;">';
 				inner += '<div class="table-line">行：<input class="number-inputter row-count" type="number" value=2></div>';
 				inner += '<div class="table-line">列：<input class="number-inputter col-count" type="number" value=2></div>';
-				inner += '<div class="table-line button-line"><button class="confirm">确定</button></div>';
 				inner += '</div>';
 
-				Alert.show(inner, '插入表格', () => {
-					MUEditor.focus();
+				showInfobox({
+					title: "插入表格",
+					mode: 'html',
+					content: inner,
+					input: false,
+					action: 'oc',
+					callback: (result, value, infoBox) => {
+						ContentController.restoreRange();
+
+						if (result !== 'ok') return;
+
+						var el = infoBox.$refs.content;
+						var row = el.querySelector('input.row-count');
+						var col = el.querySelector('input.col-count');
+						createTable(row.value || 2, col.value || 2);
+					}
 				});
 
-				var callback = () => {
-					alert.querySelector('button').removeEventListener('click', callback);
-					var row = alert.querySelector('input.row-count').value * 1;
-					var col = alert.querySelector('input.col-count').value * 1;
-					createTable(row, col);
-					Alert.close();
-					callback = null;
-					alert = null;
-				};
-
-				await wait(100);
-
-				var alert = document.querySelector('#alertFrame');
-				alert.querySelector('input.row-count').focus();
-				alert.querySelector('button').addEventListener('click', callback);
+				return false;
 			};
 			const createTable = (row, col) => {
 				if (row <= 0 || col <= 0) return;
 
-				var endLine = ContentController.endLine;
-				var isEmpty = ContentController.contents[endLine].length === 0;
-
-				var next = ContentController.contents[endLine + 1];
-				if (next.length > 0) {
-					ContentController.contents.splice(endLine + 1, 0, '');
+				var table = [];
+				var line = [];
+				for (let i = 1; i <= col; i ++) {
+					line.push('标题' + i);
 				}
-
-				var header = '|', cfg = '|', blank = '|';
+				table.push('|' + line.join('|') + '|');
+				line = [];
 				for (let i = 0; i < col; i ++) {
-					header = header + ('标题' + (i + 1)) + '|';
-					cfg = cfg + '-----|';
-					blank = blank + '     |';
+					line.push('-');
 				}
-				for (let i = 0; i < row; i ++) ContentController.contents.splice(endLine + 1, 0, blank);
-				ContentController.contents.splice(endLine + 1, 0, cfg);
-				if (isEmpty) {
-					ContentController.contents[endLine] = header;
+				table.push('|' + line.join('|') + '|');
+				for (let r = 0; r < row; r ++) {
+					line = [];
+					for (let i = 0; i < col; i ++) {
+						line.push('    ');
+					}
+					table.push('|' + line.join('|') + '|');
 				}
-				else {
-					ContentController.contents.splice(endLine + 1, 0, header);
-					ContentController.contents.splice(endLine + 1, 0, '');
-					endLine += 2;
-				}
-
-				var start = ContentController.getPos(endLine, 0);
-				var end = start;
-				ContentController.restore(start, end);
+				table = '<br>' + table.join('<br>') + '<br>';
+				document.execCommand('insertHTML', false, table);
 
 				onEdited();
 			};
@@ -678,7 +791,6 @@
 					input: true,
 					action: 'oc',
 					callback: (result, value, infoBox) => {
-						MUEditor.focus();
 						ContentController.restoreRange();
 						if (result === 'cancel' || !value) return;
 						createMark(key, value);
@@ -737,7 +849,6 @@
 					input: true,
 					action: 'oc',
 					callback: (result, value, infoBox) => {
-						MUEditor.focus();
 						ContentController.restoreRange();
 						if (result === 'cancel' || !value) return;
 						document.execCommand('insertHTML', false, ' :' + value + ': ');
@@ -745,322 +856,282 @@
 					}
 				});
 			};
-			const generateLink = async (title, type) => {
-				var sel = '', link = '';
-				if (!ContentController.didCross) {
-					sel = ContentController.contents[ContentController.startLine].substring(ContentController.startPos, ContentController.endPos);
+			const generateLink = (title, type) => {
+				var info = ContentController.getSelStruction();
+				var all = info.nodes;
+				var lines = info.selection.lines;
+				var startNode = info.selection.start.node;
+				var endNode = info.selection.end.node;
+				var startOffset = info.selection.start.offset;
+				var endOffset = info.selection.end.offset;
+				if (endNode !== startNode) {
+					endNode = startNode;
+					endOffset = lines.first.textContent.length;
+					info.selection.end.node = endNode;
+					info.selection.end.offset = endOffset;
 				}
 
-				if (sel.length > 0) {
-					let head = sel.match(/\[([\w\W]*?)\][ 　]*\(([\w\W]+?)\)/);
-					if (!!head) {
-						sel = head[1];
-						link = head[2];
-					}
-				}
-
-				var inner = '<div class="link-generator">';
-				inner += '<div class="link-line">名称：<input class="number-inputter link-title" value="' + sel.replace(/"/g, '\\"') + '"></div>';
-				inner += '<div class="link-line">地址：<input class="number-inputter link-address" value="' + link.replace(/"/g, '\\"') + '"></div>';
+				var text = lines.first.textContent.substring(startOffset, endOffset);
+				var inner = '<div class="link-generator" style="text-align:center;">';
+				inner += '<div class="link-line">标题：<input class="number-inputter link-title" value="' + text + '"></div>';
+				inner += '<div class="link-line">地址：<input class="number-inputter link-address" value=""></div>';
 				if (type !== 'link') {
-					inner += '<div class="link-line button-line">';
-					inner += '<input type="radio" name="location" value="nextline" checked><span class="name">独立一行</span><br>';
-					inner += '<input type="radio" name="location" value="floatleft"><span class="name">左侧混排</span><br>';
-					inner += '<input type="radio" name="location" value="floatright"><span class="name">右侧混排</span>';
+					inner += '<div class="link-line button-line" style="margin-top:10px;font-size:14px;">';
+					inner += '<input type="radio" name="position" value="nextline" checked><span class="name">独立一行</span><br>';
+					inner += '<input type="radio" name="position" value="floatleft"><span class="name">左侧混排</span><br>';
+					inner += '<input type="radio" name="position" value="floatright"><span class="name">右侧混排</span>';
 					inner += '</div>';
 				}
-				inner += '<div class="link-line button-line"><button class="confirm">确定</button></div>';
 				inner += '</div>';
 
-				Alert.show(inner, '插入' + title, () => {
-					MUEditor.focus();
+				showInfobox({
+					title: "插入" + title,
+					mode: 'html',
+					content: inner,
+					input: false,
+					action: 'oc',
+					callback: (result, value, infoBox) => {
+						ContentController.restoreRange();
+
+						if (result !== 'ok') return;
+
+						var el = infoBox.$refs.content;
+						var title = el.querySelector('input.link-title').value;
+						var url = el.querySelector('input.link-address').value;
+						var position = 'nextline';
+						el.querySelectorAll('input[type="radio"][name="position"]').forEach(item => {
+							if (item.checked) position = item.value;
+						});
+						createLink(type, title, url, position);
+					}
 				});
 
-				var callback = () => {
-					alert.querySelector('button').removeEventListener('click', callback);
-					var title = alert.querySelector('input.link-title').value;
-					var name = alert.querySelector('input.link-address').value;
-					var location;
-					if (type !== 'link') {
-						var locs = alert.querySelectorAll('input[name="location"]');
-						locs.forEach(r => {
-							if (r.checked) location = r.value;
-						});
-					}
-					createLink(type, title, name, location);
-					Alert.close();
-					callback = null;
-					alert = null;
-				};
-
-				await wait(100);
-
-				var alert = document.querySelector('#alertFrame');
-				alert.querySelector('input.link-title').focus();
-				alert.querySelector('button').addEventListener('click', callback);
+				return false;
 			};
 			const createLink = (type, title, link, location) => {
-				if (link.length === 0) return;
+				if (!link || link.length === 0) return;
 
-				var endLine = ContentController.endLine;
-				var endPos = ContentController.endPos;
-				var startLine = ContentController.didCross ? endLine : ContentController.startLine;
-				var startPos = ContentController.didCross ? endPos : ContentController.startPos;
-				var lineText = ContentController.contents[startLine];
-				var firstPart = lineText.substring(0, startPos);
-				var lastPart = lineText.substring(endPos, lineText.length);
-				var inner;
-				if (type === 'image') inner = '![';
-				else if (type === 'video') inner = '@[';
-				else if (type === 'audio') inner = '#[';
+				var inner, isSpecial = false;
+				if (type === 'image') {
+					inner = '<br>![';
+					isSpecial = true;
+				}
+				else if (type === 'video') {
+					inner = '<br>@[';
+					isSpecial = true;
+				}
+				else if (type === 'audio') {
+					inner = '<br>#[';
+					isSpecial = true;
+				}
 				else inner = '[';
 				inner += title + '](' + link;
 				if (location === 'floatleft') inner += ' "left")';
 				else if (location === 'floatright') inner += ' "right")';
 				else inner += ')';
-				lineText = firstPart + inner + lastPart;
-				ContentController.contents[startLine] = lineText;
-				endPos = startPos + inner.length;
+				if (isSpecial) inner = inner + '<br>';
 
-				var start = ContentController.getPos(startLine, startPos);
-				var end = ContentController.getPos(endLine, endPos);
-				ContentController.restore(start, end);
+				var selection = document.getSelection(), range = selection.getRangeAt(0);
+				var start = range.startContainer, offset = range.startOffset;
+				document.execCommand('insertHTML', false, inner);
+
+				var all = [].map.call(MUEditor.childNodes, n => n);
+				if (isSpecial) {
+					let n = start.previousSibling?.previousSibling;
+					if (!!n && !n.tagName) {
+						range.setStart(n, 0);
+						range.setEnd(n, n.textContent.length);
+						selection.removeAllRanges();
+						selection.addRange(range);
+					}
+				}
+				else {
+					range.setStart(start, offset);
+					range.setEnd(start, offset + inner.length);
+					selection.removeAllRanges();
+					selection.addRange(range);
+				}
 
 				onEdited();
 			};
-			const generateRefBlock = async () => {
-				var inner = '<div class="table-generator">';
+			const generateRefBlock = () => {
+				var inner = '<div class="table-generator" style="text-align:center;">';
 				inner += '<div class="table-line">名称：<input class="number-inputter block-name" value=""></div>';
-				inner += '<div class="table-line button-line"><button class="confirm">确定</button></div>';
 				inner += '</div>';
 
-				Alert.show(inner, '插入引用块', () => {
-					MUEditor.focus();
+				showInfobox({
+					title: "插入引用块",
+					mode: 'html',
+					content: inner,
+					input: false,
+					action: 'oc',
+					callback: (result, value, infoBox) => {
+						ContentController.restoreRange();
+
+						if (result !== 'ok') return;
+
+						var el = infoBox.$refs.content;
+						var name = el.querySelector('input.block-name').value;
+						createRefBlock(name);
+					}
 				});
 
-				var callback = () => {
-					alert.querySelector('button').removeEventListener('click', callback);
-					var name = alert.querySelector('input.block-name').value;
-					createRefBlock(name);
-					Alert.close();
-					callback = null;
-					alert = null;
-				};
-
-				await wait(100);
-
-				var alert = document.querySelector('#alertFrame');
-				alert.querySelector('input.block-name').focus();
-				alert.querySelector('button').addEventListener('click', callback);
+				return false;
 			};
 			const createRefBlock = (name) => {
-				if (name.length === 0) return;
+				if (!name || name.length === 0) return;
 
-				var endLine = ContentController.endLine;
-				var isEmpty = ContentController.contents[endLine].length === 0;
+				var hint = '[' + name + ']';
+				document.execCommand('insertHTML', false, hint);
 
-				var next = ContentController.contents[endLine + 1];
-				if (next.length > 0) {
-					ContentController.contents.splice(endLine + 1, 0, '');
+				var selection = document.getSelection(), range = selection.getRangeAt(0);
+				var start = range.startContainer, pos = start.textContent.length;
+				range.setStart(start, pos);
+				range.setEnd(start, pos);
+				selection.removeAllRanges();
+				selection.addRange(range);
+				document.execCommand('insertHTML', false, '<br>[:' + name + ':]ref(' + name + ')[:' + name + ':]');
+
+				start = start.nextSibling?.nextSibling;
+				if (!!start && !start.tagName) {
+					pos = 4 + name.length;
+					range.setStart(start, pos);
+					range.setEnd(start, pos + 5 + name.length);
+					selection.removeAllRanges();
+					selection.addRange(range);
 				}
-
-				var tag = '[:' + name + ':]';
-				ContentController.contents.splice(endLine + 1, 0, tag);
-				ContentController.contents.splice(endLine + 1, 0, '');
-
-				if (isEmpty) {
-					ContentController.contents.splice(endLine + 1, 0, tag);
-					endLine += 1;
-				}
-				else {
-					ContentController.contents.splice(endLine + 1, 0, tag);
-					ContentController.contents.splice(endLine + 1, 0, '');
-					endLine += 3;
-				}
-
-				var start = ContentController.getPos(endLine, 0);
-				var end = start;
-				ContentController.restore(start, end);
 
 				onEdited();
 			};
 			const generateBlock = (tag) => {
-				var endLine = ContentController.endLine;
-				var isEmpty = ContentController.contents[endLine].length === 0;
+				var info = ContentController.getSelStruction();
+				var all = info.nodes;
+				var lines = info.selection.lines;
+				var startNode = lines.first;
+				var endNode = lines.last;
 
-				var next = ContentController.contents[endLine + 1];
-				if (next.length > 0) {
-					ContentController.contents.splice(endLine + 1, 0, '');
-				}
+				var selection = document.getSelection(), range = document.createRange(), pos = endNode.textContent.length;
+				range.setStart(endNode, pos);
+				range.setEnd(endNode, pos);
+				selection.removeAllRanges();
+				selection.addRange(range);
+				document.execCommand('insertHTML', false, '<br>' + tag);
+				range = document.createRange();
+				range.setStart(startNode, 0);
+				range.setEnd(startNode, 0);
+				selection.removeAllRanges();
+				selection.addRange(range);
+				document.execCommand('insertHTML', false, tag + '<br>');
+				range.setStart(startNode.previousSibling?.previousSibling, 0);
+				range.setEnd(endNode.nextSibling?.nextSibling, tag.length);
+				selection.removeAllRanges();
+				selection.addRange(range);
 
-				ContentController.contents.splice(endLine + 1, 0, tag);
-				if (tag === '```') ContentController.contents.splice(endLine + 1, 0, 'printf("AlohaKosmos!")');
-				else if (tag === '$$') ContentController.contents.splice(endLine + 1, 0, 'R_{\\mu\\nu} - \\frac{1}{2} R g_{\\mu\\nu} = G T_{\\mu\\nu}');
-				else ContentController.contents.splice(endLine + 1, 0, '');
-				if (isEmpty) {
-					ContentController.contents[endLine] = tag;
-					endLine += 1;
-				}
-				else {
-					ContentController.contents.splice(endLine + 1, 0, tag);
-					ContentController.contents.splice(endLine + 1, 0, '');
-					endLine += 3;
-				}
-
-				var start = ContentController.getPos(endLine, 0);
-				var end = start;
-				ContentController.restore(start, end);
 				return true;
-			};
-			const getBlockStart = (lineID) => {
-				if (lineID === 0) return 0;
-				var line = ContentController.contents[lineID];
-				if (line.length === 0) return lineID;
-				while (lineID > 0) {
-					line = ContentController.contents[lineID - 1];
-					if (line.length === 0) return lineID;
-					if (!!line.match(/^[ 　\t]*([\+\-\*~>]+|\d+\.)/)) return lineID;
-					lineID --;
-				}
-				return 0;
-			};
-			const getBlockEnd = (lineID) => {
-				if (lineID === ContentController.lineCount - 1) return lineID;
-				var line = ContentController.contents[lineID];
-				if (line.length === 0) return lineID;
-				while (lineID < ContentController.lineCount) {
-					line = ContentController.contents[lineID + 1];
-					if (line.length === 0) return lineID;
-					if (!!line.match(/^[ 　\t]*([\+\-\*~>]+|\d+\.)/)) return lineID;
-					lineID ++;
-				}
-				return ContentController.lineCount - 1;
 			};
 			const blockIndent = (isIn) => {
-				var { startLine, endLine } = ContentController;
-				startLine = getBlockStart(startLine);
-				endLine = getBlockEnd(endLine);
+				var info = ContentController.getSelStruction();
+				var all = info.nodes;
+				var lines = info.selection.lines;
+				var startNode = info.selection.start.node;
+				var endNode = info.selection.end.node;
+				var blocks = [];
 
-				var changed = false, lastLine = '';
-				for (let i = startLine; i <= endLine; i ++) {
-					let line = ContentController.contents[i];
-					if (line.length === 0) {
-						lastLine = line;
-						continue;
+				var brLev = 0, block = [];
+				for (let i = startNode; i <= endNode; i ++) {
+					let n = all[i];
+					if (n.tagName === 'BR') {
+						brLev ++;
 					}
-					if (i > startLine) {
-						let shouldGo = false;
-						if (lastLine.length > 0) shouldGo = true;
-						if (shouldGo) {
-							if (!!line.match(/^[ 　\t]*([\+\-\*~>]+|\d+\.)/)) shouldGo = false;
+					else if (n.textContent.length > 0) {
+						if (brLev > 1) {
+							blocks.push(block);
+							block = [];
 						}
-						if (shouldGo) {
-							lastLine = line;
-							continue;
-						}
+						brLev = 0;
+						block.push(n);
 					}
-					lastLine = line;
-					let head = line.match(/^(( |　|\t|\-|\+|\*|>|~|\{[<\|>]\}|\d+\.)*)(:*)/);
-					if (!head) {
-						head = ["", "", ""];
-					}
-					let left = line.replace(head[0], '');
-					if (isIn) {
-						changed = true;
-						line = head[0] + ':' + left;
-					}
-					else {
-						let level = head[3].length;
-						if (level === 0) {
-							continue;
-						}
-						changed = true;
-						let tag = '';
-						for (let i = 1; i < level; i ++) tag += ':';
-						line = head[1] + tag + left;
-					}
-					ContentController.contents[i] = line;
 				}
-
-				if (!changed) return false;
-
-				var start = ContentController.getPos(startLine, 0);
-				var end = ContentController.getPos(endLine + 1, 0) - 1;
-				ContentController.restore(start, end);
-				return true;
-			};
-			const blockAlign = (dir) => {
-				var { startLine, endLine } = ContentController;
-				startLine = getBlockStart(startLine);
-				endLine = getBlockEnd(endLine);
-
-				var blocks = [], bid = -1, line = '';
-				for (let i = startLine; i <= endLine; i ++) {
-					if (line.length === 0) {
-						bid ++;
-						blocks[bid] = [];
-					}
-					line = ContentController.contents[i];
-					let head = line.match(/^[ 　\t]*([\+\-\*~>]+|\d+\.)/);
-					if (!!head) {
-						if (blocks[bid].length > 0) {
-							bid ++;
-							blocks[bid] = [];
-						}
-					}
-					blocks[bid].push([i, line.length > 0]);
-				}
-				blocks.forEach((block, i) => {
-					block = block.filter(line => line[1]).map(line => line[0]);
-					blocks[i] = block;
-				});
-				blocks = blocks.filter(b => b.length > 0);
+				if (block.length > 0) blocks.push(block);
 
 				blocks.forEach(block => {
-					var lid = block[0];
-					var line = ContentController.contents[lid];
-					var head = line.match(/^(( |　|\t|\-|\+|>|\*|:|~|\d+\.)*)(\{[<\|>]\})/);
-					if (!!head) {
-						line = head[1] + line.replace(head[0], '');
-					}
-					ContentController.contents[lid] = line;
-
-					lid = block[block.length - 1];
-					line = ContentController.contents[lid];
-					head = line.match(/(\{[<\|>]\})[ 　\t]*$/);
-					if (!!head) {
-						line = line.substring(0, line.length - head[0].length);
-					}
-					if (dir === 1) line += '{|}';
-					else if (dir === 2) line += '{>}';
-					ContentController.contents[lid] = line;
+					var line = block.first;
+					line.textContent = line.textContent.replace(/^(( |　|\t|\-|\+|>|\*|~|\d+\.)*(\{[<\|>]\}([ 　\t]*))*)(:*)/, (match, prefix, u1, u2, u3, mark) => {
+						var lev = mark.length;
+						if (isIn) mark += ':';
+						else if (lev > 0) mark = mark.substring(1, mark.length);
+						return prefix + mark;
+					});
 				});
 
-				var start = ContentController.getPos(startLine, 0);
-				var end = ContentController.getPos(endLine + 1, 0) - 1;
-				ContentController.restore(start, end);
-				return true;
+				startNode = lines.first;
+				endNode = lines.last;
+				var selection = document.getSelection(), range = document.createRange();
+				range.setStart(startNode, 0);
+				range.setEnd(endNode, endNode.textContent.length);
+				selection.removeAllRanges();
+				selection.addRange(range);
+
+				return false;
+			};
+			const blockAlign = (dir) => {
+				var info = ContentController.getSelStruction();
+				var all = info.nodes;
+				var lines = info.selection.lines;
+				var startNode = info.selection.start.node;
+				var endNode = info.selection.end.node;
+				var blocks = [];
+
+				var brLev = 0, block = [];
+				for (let i = startNode; i <= endNode; i ++) {
+					let n = all[i];
+					if (n.tagName === 'BR') {
+						brLev ++;
+					}
+					else if (n.textContent.length > 0) {
+						if (brLev > 1) {
+							blocks.push(block);
+							block = [];
+						}
+						brLev = 0;
+						block.push(n);
+					}
+				}
+				if (block.length > 0) blocks.push(block);
+
+				blocks.forEach(block => {
+					var line = block.first;
+					line.textContent = line.textContent.replace(/^(( |　|\t|\-|\+|>|\*|:|~|\d+\.)*)(\{[<\|>]\}([ 　\t]*))+/, (match, prefix) => prefix);
+					line = block.last;
+					var tag = '';
+					if (dir === 0) tag = ' {<}';
+					else if (dir === 1) tag = ' {|}';
+					else if (dir === 2) tag = ' {>}';
+					line.textContent = line.textContent.replace(/([ 　\t]*)(\{[<\|>]\}([ 　\t]*))+$/, '') + tag;
+				});
+
+				startNode = lines.first;
+				endNode = lines.last;
+				var selection = document.getSelection(), range = document.createRange();
+				range.setStart(startNode, 0);
+				range.setEnd(endNode, endNode.textContent.length);
+				selection.removeAllRanges();
+				selection.addRange(range);
+
+				return false;
 			};
 			const insertLine = (tag) => {
-				var endLine = ContentController.endLine;
-				var isEmpty = ContentController.contents[endLine].length === 0;
+				var selection = document.getSelection(), range = selection.getRangeAt(0);
+				var start = range.startContainer, offset = range.startOffset;
+				document.execCommand('insertHTML', false, '<br><br>' + tag + '<br><br>');
 
-				var next = ContentController.contents[endLine + 1];
-				if (next.length > 0) {
-					ContentController.contents.splice(endLine + 1, 0, '');
+				var node = start.previousSibling?.previousSibling?.previousSibling;
+				if (!!node && !node.tagName) {
+					range.setStart(node, 0);
+					range.setEnd(node, node.textContent.length);
+					selection.removeAllRanges();
+					selection.addRange(range);
 				}
-
-				if (isEmpty) {
-					ContentController.contents[endLine] = tag;
-				}
-				else {
-					ContentController.contents.splice(endLine + 1, 0, tag);
-					ContentController.contents.splice(endLine + 1, 0, '');
-				}
-
-				var start = ContentController.start;
-				var end = ContentController.end;
-				ContentController.restore(start, end);
 				return true;
 			};
 			const download = (filename, content) => {
@@ -1104,146 +1175,9 @@
 				if (!file) return;
 				openLocalFile(file);
 			};
-			const generateKeywords = content => {
-				var wordFreq = {};
-				content = content
-					.replace(/\n+([ 　\t>\-\+\*]+|\d+\.[ 　\t>]*)+/g, '\n')
-					.replace(/\n(#+[ 　\t]|`{3,}|\${2,})/g, '\n')
-					.replace(/[\*~_`\$\-\^]+/g, '')
-					.replace(/[!@#]\[([^\n]*?)\][ 　\t]*\([^\n]*?\)/g, (match, title) => ' ' + title + ' ')
-					.replace(/[\t 　,\.\(\)\{\}\[\]\?<>\\\/\!`~@#\$%\^&\*\-=_\+，。《》？、；：‘“’”'":;【】（）…—·！￥]+/g, ' ')
-					.replace(/ +/g, ' ')
-					.replace(/[a-z0-9\-\_\. ]+/gi, match => {
-						var words = match.trim().split(/ +/).filter(w => w.length > 0);
-						var line = [];
-						words.forEach(w => {
-							line.push(w);
-							var ws = line.join(' ');
-							if (!!ws.match(/^[\d\. ]+$/)) return;
-							wordFreq[ws] = (wordFreq[ws] || 0) + 1;
-						});
-						return '\n';
-					})
-					.split(/[ \n\r]+/)
-					.filter(l => l.length > 0)
-				;
-				content.forEach(chars => {
-					chars = chars.replace(/[ 　\t]+/g, '');
-					var len = chars.length;
-					if (len < 2) return;
-					for (let i = 2; i <= 10; i ++) {
-						for (let j = 0; j <= len - i; j ++) {
-							let w = chars.substr(j, i);
-							wordFreq[w] = (wordFreq[w] || 0) + 1;
-						}
-					}
-				});
-
-				var valueList = [];
-				var total = 0;
-				var wordList = Object.keys(wordFreq).map(w => {
-					var v = w.replace(/[a-z0-9\-_\.]+/gi, 'X').replace(/ +/g, '');
-					v = v.length;
-					var f = wordFreq[w];
-					var list = [], sep;
-					if (!!w.match(/^[a-z0-9\-_\. ]+$/i)) {
-						sep = ' ';
-					}
-					else {
-						sep = '';
-					}
-					let lst = w.split(sep);
-					let ll = lst.length;
-					for (let i = 2; i < ll; i ++) {
-						for (let j = 0; j <= ll - i; j ++) {
-							let s = [...lst].splice(j, i).join(sep);
-							if (!list.includes(s)) list.push(s);
-						}
-					}
-					list = list.map(l => l.trim()).filter(l => l.length > 0);
-					var wgt = f * Math.sqrt(v + 1);
-					total += wgt;
-					var item = [w, f, v, wgt, list, wgt];
-					valueList[w] = item;
-					return item;
-				});
-				wordFreq = valueList;
-				valueList = null;
-				total /= wordList.length;
-				wordList = wordList.filter(item => item[3] >= total);
-				wordList.forEach(item => {
-					var list = item[4], value = item[3] / Math.sqrt(item[2]);
-					list.forEach(w => {
-						var wf = wordFreq[w];
-						if (!wf) return;
-						if (item[3] > wf[3]) {
-							wf[5] -= value;
-						}
-						else {
-							item[5] -= wf[3] / Math.sqrt(wf[2]);
-						}
-					});
-				});
-				wordFreq = {};
-				wordList = wordList.filter(item => {
-					item[3] = item[5];
-					if (item[3] > 0) {
-						wordFreq[item[0]] = item;
-						return true;
-					}
-					return false;
-				});
-				wordList.forEach(item => {
-					var list = item[4], value = item[3] / Math.sqrt(item[2]);
-					list.forEach(w => {
-						var wf = wordFreq[w];
-						if (!wf) return;
-						if (item[3] > wf[3]) {
-							wf[5] -= value;
-						}
-						else {
-							item[5] -= wf[3] / Math.sqrt(wf[2]);
-						}
-					});
-				});
-				total = 0;
-				wordFreq = {};
-				wordList = wordList.filter(item => {
-					item[3] = item[5];
-					if (item[3] <= 0) return false;
-					wordFreq[item[0]] = item;
-					total += item[3];
-					return true;
-				});
-				total /= wordList.length;
-				wordList = wordList.filter(item => item[3] >= total);
-
-				wordList.sort((wa, wb) => wa[3] - wb[3]);
-				var count = 0, len = wordList.length;
-				total = 0;
-				for (let i = 0; i < len; i ++) {
-					let j = wordList[i][3];
-					let v = j;
-					count += v;
-					v *= j;
-					total += v;
-					wordList[i][4] = v;
-				}
-				for (let i = 0; i < len; i ++) {
-					let v = wordList[i][4];
-					v /= total;
-					v = 0 - Math.log(v) * v;
-					wordList[i][4] = v;
-				}
-				wordList.sort((wa, wb) => wb[4] - wa[4]);
-				wordList = wordList.splice(0, 10);
-				wordList = wordList.map(item => item[0]);
-				return wordList;
-			};
 
 			const controlHandler = (key, fromKB=false) => {
 				var result = false;
-				var scroll = MUEditor.scrollTop;
 				var saveHistory = true;
 				ContentController.update();
 
@@ -1265,7 +1199,7 @@
 						MUEditor.value = item.content;
 						MUEditor.selectionStart = item.start;
 						MUEditor.selectionEnd = item.end;
-						MUEditor.scrollTo(0, item.scroll);
+						// MUEditor.scrollTo(0, item.scroll);
 						return true;
 					}
 					else {
@@ -1279,7 +1213,7 @@
 						MUEditor.value = item.content;
 						MUEditor.selectionStart = item.start;
 						MUEditor.selectionEnd = item.end;
-						MUEditor.scrollTo(0, item.scroll);
+						// MUEditor.scrollTo(0, item.scroll);
 						return true;
 					}
 					else {
@@ -1288,25 +1222,7 @@
 				}
 
 				else if (key === 'TabIndent') {
-					if (ContentController.didCross) {
-						result = moveLevel(true, fromKB);
-					}
-					else {
-						let lid = ContentController.startLine;
-						let start = ContentController.startPos;
-						let end = ContentController.endPos;
-
-						let lineText = ContentController.contents[lid];
-						let firstPart = lineText.substring(0, start);
-						let lastPart = lineText.substring(end, lineText.length);
-						ContentController.contents[lid] = firstPart + '\t' + lastPart;
-						start ++;
-						end = start;
-						start = ContentController.getPos(lid, start);
-						end = ContentController.getPos(lid, end);
-						ContentController.restore(start, end);
-						result = true;
-					}
+					result = moveLevel(true, fromKB);
 				}
 				else if (key === 'TabOutdent') {
 					result = moveLevel(false, fromKB);
@@ -1583,9 +1499,6 @@
 					result = deleteLine();
 				}
 
-				MUEditor.focus();
-				MUEditor.scrollTop = scroll;
-
 				if (result) onEdited(saveHistory);
 
 				return result;
@@ -1723,42 +1636,74 @@
 			buildToolBar();
 
 			// 其它相关事件
-			var mover, changer;
+			var mover, changer, lineMap = [];
+			const notTextLine = (line, isSpecial=false, blockMark='') => {
+				// 先处理标记
+				if (line.length === 0 || !!line.match(/^ *$/)) return [true, false, blockMark];
+				if (isSpecial) return [true, true, blockMark];
+				if (!!line.match(/^\[.+\][:：][ 　\t]*/)) return [true, true, blockMark];
+
+				// 代码与公式
+				if (!blockMark) {
+					if (!!line.match(/^\$\$/)) return [true, isSpecial, '$'];
+					if (!!line.match(/^```/)) return [true, isSpecial, '`'];
+					if (!!line.match(/^(~~~$|~~~[ 　\t\w]+)/)) return [true, isSpecial, '~'];
+				}
+				else if (blockMark === '$') {
+					if (!!line.match(/^\$\$/)) blockMark = '';
+					return [true, isSpecial, blockMark];
+				}
+				else if (blockMark === '`') {
+					if (!!line.match(/^```/)) blockMark = '';
+					return [true, isSpecial, blockMark];
+				}
+				else if (blockMark === '~') {
+					if (!!line.match(/^~~~/)) blockMark = '';
+					return [true, isSpecial, blockMark];
+				}
+
+				if (!!line.match(/^(标题|作者|简介|关键词|更新|GOD|THEONE|TITLE|AUTHOR|EMAIL|DESCRIPTION|STYLE|SCRIPT|DATE|KEYWORD|GLOSSARY|TOC|REF|LINK|IMAGES|VIDEOS|AUDIOS|ARCHOR|SHOWTITLE|SHOWAUTHOR|RESOURCES)[:：]/i)) return [true, isSpecial, blockMark];
+				if (!line.match(/[ 　\t\w\u4e00-\u9fa5]/)) return [true, isSpecial, blockMark];
+				if (!!line.match(/[!@#]\[.*\]\(.+\)/)) return [true, isSpecial, blockMark];
+				if (!!line.match(/^[ 　\t]*\[.+\][ 　\t]*$/)) return [true, isSpecial, blockMark];
+				if (!!line.match(/^\|>.*<\|$/)) return [true, isSpecial, blockMark];
+
+				return [false, isSpecial, blockMark];
+			};
+			const getTargetNode = (linenum) => {
+				if (!(linenum >= 0)) return null;
+				var targets = MUPreview.querySelectorAll('span.linenumbermarker[linenumber="' + linenum + '"]');
+				targets = [].map.call(targets, n => n);
+				targets = targets.filter(n => {
+					return !n.parentElement.classList.contains('content-link');
+				});
+				if (targets.length === 0) return null;
+				var previewer = MUPreview.parentElement;
+				var originTop = previewer.getBoundingClientRect().top;
+				targets = targets.map(n => {
+					return [Math.abs(n.getBoundingClientRect().top - originTop), n];
+				});
+				targets.sort((a, b) => a[0] - b[0]);
+				return targets[0][1];
+			};
 			const onKey = evt => {
 				if (evt.which === 13) {
-					// 判断是否是在最后一位
-					let selection = document.getSelection(), range = selection.getRangeAt(0);
-					let lastText = [].map.call(MUEditor.childNodes, n => n).filter(n => n.nodeName === '#text').last;
+					document.execCommand('insertHTML', false, '<span class="placeholder"></span>');
+					let content = MUEditor.innerHTML;
+					content = content.replace('<span class="placeholder"></span>', '<br><span class="placeholder"></span>');
+					MUEditor.innerHTML = content;
+					let placeholder = MUEditor.querySelector('span.placeholder');
+					placeholder.scrollIntoViewIfNeeded();
 					let node = document.createTextNode('test');
-					if (range.endContainer === MUEditor) {
-						let br = MUEditor.childNodes[range.endOffset];
-						if (!!br) {
-							MUEditor.insertBefore(node, br);
-						}
-						else {
-							MUEditor.appendChild(node);
-						}
-					}
-					else if (range.endOffset === range.endContainer.textContent.length) {
-						document.execCommand('insertHTML', false, '<br/>');
-						if (range.endContainer === lastText) {
-							MUEditor.appendChild(node);
-						}
-						else {
-							let next = range.endContainer.nextSibling;
-							MUEditor.insertBefore(node, next);
-						}
-					}
-					else {
-						document.execCommand('insertHTML', false, '<br/>');
-						evt.preventDefault();
-						return false;
-					}
+					MUEditor.insertBefore(node, placeholder);
+					MUEditor.removeChild(placeholder);
+
+					let selection = document.getSelection(), range = selection.getRangeAt(0);
 					selection.removeAllRanges();
 					range = document.createRange();
 					range.selectNode(node);
 					selection.addRange(range);
-					node.textContent = '\n';
+					node.textContent = '';
 					range.collapse();
 
 					evt.preventDefault();
@@ -1864,10 +1809,27 @@
 					clearTimeout(changer);
 					changer = null;
 				}
+
 				var content = MUEditor.innerText;
 				if (lastContent === content) return;
-				var isFirst = lastContent === '';
 				lastContent = content;
+
+				content = content.split('\n');
+				var isMark = false, isBlock = '';
+				lineMap.splice(0, lineMap.length);
+				content = content.map((line, i) => {
+					var notLine = false;
+					[notLine, isMark, isBlock] = notTextLine(line, isMark, isBlock);
+					if (notLine) return line;
+					var prefix = line.match(/^([ 　`~!@#%^&\*\-_\+=\\\|:;\/\?\.,<>\d\r\t]|(\[\w*\][ 　\t]*(\(.*\))*)|\{[\|<>]*\})*/);
+					if (!prefix) prefix = '';
+					else prefix = prefix[0];
+					var bra = line.substring(0, prefix.length), ket = line.substring(prefix.length, line.length);
+					prefix = "%LINENUMBER-" + i + '%';
+					lineMap.push(i);
+					return bra + prefix + ket;
+				});
+				content = content.join('\n')
 
 				var markup = await MarkUp.fullParse(content, {
 					showtitle: true,
@@ -1876,137 +1838,7 @@
 				MUPreview.innerHTML = markup.content;
 				MUToolbar.uiWordCount.innerText = markup.wordCount;
 				FileTitle = markup.title;
-
-				return;
-				var last = MUPreview.innerHTML;
-				var html;
-				try {
-					if (isHelping) {
-						html = MarkUp.fullParse(text, { linenumber: true });
-						articleConfig.lineCount = html.lineCount || 0;
-						html = html.content;
-					}
-					else {
-						articleConfig.linenumber = true;
-						html = MarkUp.fullParse(text, articleConfig);
-						articleConfig.lineCount = html.lineCount || 0;
-						html = html.content;
-					}
-				} catch (err) {
-					html = last;
-					console.error(err);
-				}
-
-				MUPreview.innerHTML = html;
-
-				var parsedList = [...MUPreview.querySelectorAll('span[name^="line"]')].map(ele => {
-					ele = ele.parentElement;
-					ele.__inner = ele.innerText.replace(/^[ 　\t\n\r]+|[ 　\t\n\r]+$/g, '');
-					return ele;
-				});
-				contentMap = {};
-				var lstIdx = 0, lstLen = parsedList.length;
-				text.split('\n').forEach((line, lid) => {
-					if (line.length === 0) return;
-					if (!!line.match(/^[=\-\+\*~\._#]{3,}$/)) return;
-					if (!!line.match(/^[ 　\t>\+\-\*`\^\|_~=\{\}<]$/)) return; //去除引用列表等中的空行
-					if (!!line.match(/^[!@#]\[[^\(\)\[\]\{\}]*?(\[.*?\][ 　\t]*\(.*?\))*?[^\(\)\[\]\{\}]*?\](\([^\(\)\[\]\{\}]*?\))$/)) return; // 去除图片等资源
-					if (!!line.match(/^\[([\w \-\.\+\=\\\/]+?)\] *[:：] *([\w\W]+?)$/)) return; // 去除图片等资源
-					line = line.replace(/^[ 　\t>\+\-\*`\^\|_~=\{\}<]+/g, '');
-					line = line.replace(/\\/g, '\\').replace(/\//g, '\/')
-						.replace(/\*/g, '*').replace(/\-/g, '-').replace(/\+/g, '+').replace(/\~/g, '~')
-						.replace(/\^/g, '^').replace(/\$/g, '$').replace(/\[/g, '[').replace(/\]/g, ']')
-						.replace(/\{/g, '{').replace(/\}/g, '}').replace(/\(/g, '(').replace(/\)/g, ')')
-						.replace(/\#/g, '#');
-					line = line.split(/[\+\-\*~>!@#\^\$\{\}\(\)\[\]: ]/)[0];
-					if (line.length === 0) return;
-					var idx = -1;
-					for (let i = lstIdx; i < lstLen; i ++) {
-						let l = parsedList[i];
-						if (l.__inner.indexOf(line) === 0) {
-							idx = i;
-							lstIdx = idx + 1;
-							break;
-						}
-					}
-					contentMap[lid] = parsedList[idx];
-				});
-
-				articleConfig.lineMap = [];
-				articleConfig.lineWordCount = 0;
-				if (articleConfig.lineCount > 0) {
-					for (let i = 0; i < articleConfig.lineCount; i ++) {
-						var mark = MUPreview.querySelector('span[name="line-' + i + '"]');
-						if (!mark) {
-							articleConfig.lineMap.push([i, 0]);
-							continue;
-						}
-						mark = mark.parentElement;
-						var count = mark.innerText.length;
-						articleConfig.lineWordCount += count;
-						articleConfig.lineMap.push([i, count]);
-					}
-				}
-
-				// 获得 LaTeX 列表
-				var needRedraw = false;
-				MUPreview.querySelectorAll('.latex').forEach(latex => {
-					var inner = latex.innerText;
-					var output = LaTeXMap.get(inner);
-					latex.__latex = inner;
-					if (!!output) latex.innerHTML = '';
-					else needRedraw = true;
-				});
-
-				if (needRedraw) {
-					MathJax.Hub.Queue(["Typeset", MathJax.Hub]);
-					// 缓存渲染完成的 LaTeX
-					MathJax.Hub.Queue((...args) => {
-						MUPreview.querySelectorAll('.latex').forEach(latex => {
-							var origin = latex.__latex;
-							var output = LaTeXMap.get(origin);
-
-							if (!!output) {
-								latex.innerHTML = output;
-							}
-							else {
-								output = latex.innerHTML;
-								LaTeXMap.set(origin, output);
-							}
-						});
-					});
-				}
-				else {
-					MUPreview.querySelectorAll('.latex').forEach(latex => {
-						var origin = latex.__latex;
-						var output = LaTeXMap.get(origin);
-
-						if (!!output) {
-							latex.innerHTML = output;
-						}
-						else {
-							output = latex.innerHTML;
-							LaTeXMap.set(origin, output);
-						}
-					});
-				}
-
-				if (saveHistory) {
-					let history = new HistoryItem();
-					history.content = text;
-					history.start = MUEditor.selectionStart;
-					history.end = MUEditor.selectionEnd;
-					history.scroll = MUEditor.scrollTop;
-					HistoryManager.append(history);
-				}
-
-				await wait(50);
-
-				text = MUEditor.value;
-				text = text.replace(/[ 　\t\n\+\-\*_\.,\?!\^\[\]\(\)\{\}$#@%&=\|\\\/<>~，。《》？‘’“”；：:、【】{}（）—…￥·`]+/g, ' ').replace(/ {2,}/g, ' ');
-				text = text.replace(/[a-z0-9]+/gi, 'X').replace(/ +/g, '');
-				var wordCount = text.length;
-				document.querySelector('div.controller.toolbar div.wordcount-hint span.count').innerText = wordCount;
+				await afterMarkUp();
 			};
 			const onBlur = () => {
 				ContentController.saveRange();
@@ -2036,71 +1868,70 @@
 				pos = pos.top + pos.height * percent;
 
 				var nodes = [].map.call(MUEditor.childNodes, n => n);
-				var target = null;
-				nodes.some(node => {
+				var linenum = -1, isBR = true, endAsText = false;
+				nodes.some((node, i) => {
+					// 如果是textNode
 					if (!node.getBoundingClientRect) {
-						target = node;
+						if (isBR) linenum ++;
+						isBR = false;
+						endAsText = true;
 						return false;
 					}
+					// 如果前一行不是br
+					if (!isBR) {
+						isBR = true;
+					}
+					else {
+						linenum ++;
+					}
+					endAsText = false;
 					var rect = node.getBoundingClientRect();
 					return rect.top >= pos;
 				});
-				console.log(target);
-				return;
+				if (!endAsText) linenum --;
 
+				var prev, curr, next;
+				lineMap.some((num) => {
+					if (num < linenum) prev = num;
+					if (num === linenum) curr = num;
+					if (num > linenum) {
+						next = num;
+						return true;
+					}
+				});
 
-
-
-
-				if (!articleConfig.lineCount || articleConfig.lineCount === 0) {
-					let percent = MUEditor.scrollTop / (MUEditor.scrollHeight - MUEditor.offsetHeight);
-					let height = MUPreview.scrollHeight - MUPreview.offsetHeight;
-					height *= percent;
-					scrollViewTo(Math.floor(height));
+				if (curr >= 0) {
+					curr = getTargetNode(curr);
+					if (!curr) return;
+					curr = curr.getBoundingClientRect();
+					let top = curr.top - MUPreview.getBoundingClientRect().top;
+					let editor = MUEditor.parentElement;
+					if (editor.scrollHeight > editor.offsetHeight) {
+						let percent = editor.scrollTop / (editor.scrollHeight - editor.offsetHeight);
+						top -= (editor.getBoundingClientRect().height - curr.height) * percent;
+					}
+					MUPreview.parentElement.scrollTo({ top, left: 0, behavior: 'smooth' });
+				}
+				else if (!(prev >= 0) || !(next >= 0)) {
+					return;
 				}
 				else {
-					let percent = MUEditor.scrollTop / (MUEditor.scrollHeight - MUEditor.offsetHeight);
-					let target = MUEditor.offsetHeight * percent;
-					let index = -1;
-					let content = MUScrollView.innerText.split('\n');
-					[...MUScrollView.querySelectorAll('br')].some((ele, lid) => {
-						var {top} = ele.getBoundingClientRect();
-						if (top > target) return true;
-						index = lid;
-					});
-					target = null;
-					for (let i = index; i >= 0; i --) {
-						let e = contentMap[i];
-						if (!!e) {
-							target = e;
-							break;
-						}
-					}
+					let rate = (linenum - prev) / (next - prev);
+					prev = getTargetNode(prev);
+					if (!prev) return;
+					next = getTargetNode(next);
+					if (!next) return;
 
-					if (!target) {
-						let pos = Math.round(articleConfig.lineWordCount * percent);
-						let count = 0;
-						index = 0;
-						articleConfig.lineMap.some(line => {
-							count += line[1];
-							index = line[0];
-							return count >= pos;
-						});
-						target = MUPreview.querySelector('span[name="line-' + index + '"]');
-						if (!!target) target = target.parentElement;
-					}
-					if (!target) {
-						let height = MUPreview.scrollHeight - MUPreview.offsetHeight;
-						height *= percent;
-						scrollViewTo(Math.floor(height));
-					}
-					else {
-						let {top, height} = target.getBoundingClientRect();
-						top -= 200;
+					prev = prev.getBoundingClientRect();
+					next = next.getBoundingClientRect();
 
-						let position = top + MUPreview.scrollTop + (height - MUPreview.offsetHeight + 150) * percent;
-						scrollViewTo(Math.floor(position));
-					}
+					let max = next.top + next.height - prev.top;
+					let top = prev.top + max * rate - MUPreview.getBoundingClientRect().top;
+
+					let editor = MUEditor.parentElement;
+					let percent = editor.scrollHeight > editor.offsetHeight ? editor.scrollTop / (editor.scrollHeight - editor.offsetHeight) : 0;
+					top -= editor.getBoundingClientRect().height * percent;
+					MUPreview.parentElement.scrollTo({ top, left: 0, behavior: 'smooth' });
 				}
 			};
 			const onWheel = () => {
@@ -2127,7 +1958,6 @@
 
 
 
-			console.log('VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV');
 			return;
 
 			var lastContent = '', articleConfig = {}, helpContent = '', isHelping = false;

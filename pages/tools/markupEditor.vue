@@ -15,6 +15,9 @@
 </template>
 
 <style scoped>
+.scroller {
+	scroll-behavior: smooth;
+}
 </style>
 
 <script>
