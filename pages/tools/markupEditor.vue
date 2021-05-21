@@ -14,12 +14,6 @@
 	<input ref="FileLoader" type="file" />
 </template>
 
-<style scoped>
-.scroller {
-	scroll-behavior: smooth;
-}
-</style>
-
 <script>
 var MarkUpEditorInitialed = false;
 (async () => {

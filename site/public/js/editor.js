@@ -476,6 +476,7 @@
 					var range = selection.getRangeAt(0);
 					var startNode = range.startContainer, endNode = range.endContainer;
 					var startOffset = range.startOffset, endOffset = range.endOffset;
+					var selChanged = false;
 					if (startNode === MUEditor) {
 						startNode = all[startOffset];
 						if (!startNode) return;
@@ -509,6 +510,7 @@
 						var ind = -1;
 						ind = line.indexOf(startNode);
 						if (ind >= 0) {
+							if (ind > 0) selChanged = true;
 							isStart = true;
 							startNode = n;
 							for (let i = 0; i < ind; i ++) {
@@ -517,6 +519,7 @@
 						}
 						ind = line.indexOf(endNode);
 						if (ind >= 0) {
+							if (ind > 0) selChanged = true;
 							isEnd = true;
 							endNode = n;
 							for (let i = 0; i < ind; i ++) {
@@ -557,7 +560,7 @@
 						}
 					}
 
-					return {all, startNode, startIndex, startOffset, endNode, endIndex, endOffset};
+					return {all, startNode, startIndex, startOffset, endNode, endIndex, endOffset, selChanged};
 				},
 			};
 
@@ -1753,7 +1756,7 @@
 							insert += header;
 						}
 					}
-					insert = insert + '<span class="placeholder"></span>';
+					insert = insert + '<span class="placeholder"></span><br>';
 					document.execCommand('insertHTML', false, insert);
 
 					// 定位光标
@@ -1784,8 +1787,9 @@
 					range = document.createRange();
 					range.selectNode(node);
 					selection.addRange(range);
-					node.textContent = '';
-					range.collapse();
+					document.execCommand('insertHTML', false, '');
+					// node.textContent = '\n';
+					// range.collapse();
 
 					// 末尾处理
 					if (all.last === node && emptyLast) {
@@ -1925,10 +1929,14 @@
 				if (!saveHistory) return;
 				var selection = document.getSelection();
 				var range = selection.getRangeAt(0);
-				var {all, startNode, startIndex, startOffset, endNode, endIndex, endOffset} = ContentController.rearrangeAll();
+				var {all, startNode, startIndex, startOffset, endNode, endIndex, endOffset, selChanged} = ContentController.rearrangeAll();
 				HistoryManager.append(origin, startIndex, startOffset, endIndex - 1, endOffset);
-				if (endNode.tagName === 'BR') endNode = endNode.previousSibling;
-				if (!startNode || !endNode) return;
+				console.log(startNode, startIndex, startOffset, endNode, endIndex, endOffset, selChanged);
+				while (endNode.tagName === 'BR') {
+					endNode = endNode.previousSibling;
+					if (endNode) break;
+				}
+				if (!startNode || !endNode || !selChanged) return;
 				range.setStart(startNode, startOffset);
 				range.setEnd(endNode, endOffset);
 				selection.removeAllRanges();

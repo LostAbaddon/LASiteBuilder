@@ -140,6 +140,11 @@
 					"category": "markupEditor"
 				},
 				{
+					"name": "本地文库（制作中）",
+					"type": "page",
+					"category": "localLibrary"
+				},
+				{
 					"name": "计算器（迁移中）",
 					"type": "page",
 					"category": "calculator"
@@ -221,6 +226,11 @@
 					"name": "常用数据",
 					"type": "article",
 					"category": "library/data.md"
+				},
+				{
+					"name": "有趣好站",
+					"type": "article",
+					"category": "library/website.md"
 				}
 			]
 		}
