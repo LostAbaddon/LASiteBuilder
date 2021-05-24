@@ -148,28 +148,14 @@
 		}
 	}
 
-	class HistoryItem {
-		content = '';
-		startNode = 0;
-		startOffset = 0;
-		endNode = 0;
-		endOffset = 0;
-	}
 	const HistoryManager = {
 		history: [],
 		index: -1,
 		editor: null,
-		append (content, startNode, startOffset, endNode, endOffset) {
-			var history = new HistoryItem();
-			history.content = content;
-			history.startNode = startNode;
-			history.startOffset = startOffset;
-			history.endNode = endNode;
-			history.endOffset = endOffset;
-
+		append (content) {
 			HistoryManager.index ++;
 			HistoryManager.history.splice(HistoryManager.index, HistoryManager.history.length);
-			HistoryManager.history.push(history);
+			HistoryManager.history.push(content);
 		},
 		restore () {
 			if (HistoryManager.index <= 0) return;
@@ -181,28 +167,34 @@
 			HistoryManager.index ++;
 			HistoryManager.recall();
 		},
-		recall (history) {
+		recall () {
 			var history = HistoryManager.history[HistoryManager.index];
 			if (!history) return;
 
-			HistoryManager.editor.innerText = history.content;
-			var all = [].map.call(HistoryManager.editor.childNodes, n => n);
-			var startNode = all[history.startNode < 0 ? 0 : history.startNode];
-			var endNode = all[history.endNode >= all.length ? all.length - 1 : history.endNode];
-			var selection = document.getSelection();
-			var range = selection.getRangeAt(0);
-			range.setStart(startNode, history.startOffset);
-			range.setEnd(endNode, history.endOffset);
-			selection.removeAllRanges();
-			selection.addRange(range);
-			if (startNode.tagName === 'BR') {
-				startNode.scrollIntoViewIfNeeded();
+			var selection = document.getSelection(), range = document.createRange();
+			HistoryManager.editor.innerHTML = history;
+			var pho = HistoryManager.editor.querySelector('span.placesaver.omni');
+			var phs = HistoryManager.editor.querySelector('span.placesaver.start');
+			var phe = HistoryManager.editor.querySelector('span.placesaver.end');
+			if (!!pho) {
+				pho.scrollIntoViewIfNeeded();
+				range.setStartAfter(pho);
+				range.setEndAfter(pho);
+				selection.removeAllRanges();
+				selection.addRange(range);
+				pho.parentElement.removeChild(pho);
 			}
-			else if (!!startNode.nextElementSibling) {
-				startNode.nextElementSibling.scrollIntoViewIfNeeded();
+			else if (!!phs && !!phe) {
+				phs.scrollIntoViewIfNeeded();
+				range.setStartAfter(phs);
+				range.setEndBefore(phe);
+				selection.removeAllRanges();
+				selection.addRange(range);
+				phs.parentElement.removeChild(phs);
+				phe.parentElement.removeChild(phe);
 			}
-			else if (!!startNode.previousElementSibling) {
-				startNode.previousElementSibling.scrollIntoViewIfNeeded();
+			else {
+				return;
 			}
 		},
 		clear () {
@@ -211,7 +203,6 @@
 		},
 	};
 
-	const ScrollSpeed = 50, ScrollRate = 0.15;
 	const DefaultFontAwesomeIcons = ["glass", "music", "search", "envelope", "heart", "star", "star-empty", "user", "film", "th-large", "th", "th-list", "ok", "remove", "zoom-in", "zoom-out", "off", "signal", "cog", "trash", "home", "file", "time", "road", "download-alt", "download", "upload", "inbox", "play-circle", "repeat", "refresh", "list-alt", "lock", "flag", "headphones", "volume-off", "volume-down", "volume-up", "qrcode", "barcode", "tag", "tags", "book", "bookmark", "print", "camera", "font", "bold", "italic", "text-height", "text-width", "align-left", "align-center", "align-right", "align-justify", "list", "indent-left", "indent-right", "facetime-video", "picture", "pencil", "map-marker", "adjust", "tint", "edit", "share", "check", "move", "step-backward", "fast-backward", "backward", "play", "pause", "stop", "forward", "fast-forward", "step-forward", "eject", "chevron-left", "chevron-right", "plus-sign", "minus-sign", "remove-sign", "ok-sign", "question-sign", "info-sign", "screenshot", "remove-circle", "ok-circle", "ban-circle", "arrow-left", "arrow-right", "arrow-up", "arrow-down", "share-alt", "resize-full", "resize-small", "plus", "minus", "asterisk", "exclamation-sign", "gift", "leaf", "fire", "eye-open", "eye-close", "warning-sign", "plane", "calendar", "random", "comment", "magnet", "chevron-up", "chevron-down", "retweet", "shopping-cart", "folder-close", "folder-open", "resize-vertical", "resize-horizontal", "bar-chart", "twitter-sign", "facebook-sign", "camera-retro", "key", "cogs", "comments", "thumbs-up", "thumbs-down", "star-half", "heart-empty", "signout", "linkedin-sign", "pushpin", "external-link", "signin", "trophy", "github-sign", "upload-alt", "lemon", "phone", "check-empty", "bookmark-empty", "phone-sign", "twitter", "facebook", "github", "unlock", "credit-card", "rss", "hdd", "bullhorn", "bell", "certificate", "hand-right", "hand-left", "hand-up", "hand-down", "circle-arrow-left", "circle-arrow-right", "circle-arrow-up", "circle-arrow-down", "globe", "wrench", "tasks", "filter", "briefcase", "fullscreen", "group", "link", "cloud", "beaker", "cut", "copy", "paper-clip", "save", "sign-blank", "reorder", "list-ul", "list-ol", "strikethrough", "underline", "table", "magic", "truck", "pinterest", "pinterest-sign", "google-plus-sign", "google-plus", "money", "caret-down", "caret-up", "caret-left", "caret-right", "columns", "sort", "sort-down", "sort-up", "envelope-alt", "linkedin", "undo", "legal", "dashboard", "comment-alt", "comments-alt", "bolt", "sitemap", "umbrella", "paste", "lightbulb", "exchange", "cloud-download", "cloud-upload", "user-md", "stethoscope", "suitcase", "bell-alt", "coffee", "food", "file-alt", "building", "hospital", "ambulance", "medkit", "fighter-jet", "beer", "h-sign", "plus-sign-alt", "double-angle-left", "double-angle-right", "double-angle-up", "double-angle-down", "angle-left", "angle-right", "angle-up", "angle-down", "desktop", "laptop", "tablet", "mobile-phone", "circle-blank", "quote-left", "quote-right", "spinner", "circle", "reply"];
 	const ShortcutsMap = {};
 
@@ -351,14 +342,14 @@
 					r.setEnd(ContentController.endNode, end);
 					ContentController.selection.removeAllRanges();
 					ContentController.selection.addRange(r);
-					document.execCommand('insertHTML', false, pstfix);
+					insertHTML(pstfix);
 
 					r = document.createRange();
 					r.setStart(ContentController.startNode, start);
 					r.setEnd(ContentController.startNode, start);
 					ContentController.selection.removeAllRanges();
 					ContentController.selection.addRange(r);
-					document.execCommand('insertHTML', false, prefix);
+					insertHTML(prefix);
 
 					r = document.createRange();
 					r.setStart(ContentController.startNode, start);
@@ -728,7 +719,7 @@
 						range.setEnd(startNode, startOffset);
 						selection.removeAllRanges();
 						selection.addRange(range);
-						document.execCommand('insertHTML', false, '\t');
+						insertHTML('\t');
 					}
 					else {
 						lines.forEach(line => {
@@ -882,7 +873,7 @@
 					table.push('|' + line.join('|') + '|');
 				}
 				table = '<br>' + table.join('<br>') + '<br>';
-				document.execCommand('insertHTML', false, table);
+				insertHTML(table);
 
 				onEdited(true);
 			};
@@ -920,7 +911,7 @@
 				else {
 					content += '{' + mark + '}';
 				}
-				document.execCommand('insertHTML', false, content);
+				insertHTML(content);
 
 				if (key === 'anchor') return onEdited(true);
 
@@ -957,7 +948,7 @@
 					callback: (result, value, infoBox) => {
 						ContentController.restoreRange();
 						if (result === 'cancel' || !value) return;
-						document.execCommand('insertHTML', false, ' :' + value + ': ');
+						insertHTML(' :' + value + ': ');
 						onEdited(true);
 					}
 				});
@@ -1039,7 +1030,7 @@
 
 				var selection = document.getSelection(), range = selection.getRangeAt(0);
 				var start = range.startContainer, offset = range.startOffset;
-				document.execCommand('insertHTML', false, inner);
+				insertHTML(inner);
 
 				var all = [].map.call(MUEditor.childNodes, n => n);
 				if (isSpecial) {
@@ -1088,7 +1079,7 @@
 				if (!name || name.length === 0) return;
 
 				var hint = '[' + name + ']';
-				document.execCommand('insertHTML', false, hint);
+				insertHTML(hint);
 
 				var selection = document.getSelection(), range = selection.getRangeAt(0);
 				var start = range.startContainer, pos = start.textContent.length;
@@ -1096,7 +1087,7 @@
 				range.setEnd(start, pos);
 				selection.removeAllRanges();
 				selection.addRange(range);
-				document.execCommand('insertHTML', false, '<br>[:' + name + ':]ref(' + name + ')[:' + name + ':]');
+				insertHTML('<br>[:' + name + ':]ref(' + name + ')[:' + name + ':]');
 
 				start = start.nextSibling?.nextSibling;
 				if (!!start && !start.tagName) {
@@ -1121,13 +1112,13 @@
 				range.setEnd(endNode, pos);
 				selection.removeAllRanges();
 				selection.addRange(range);
-				document.execCommand('insertHTML', false, '<br>' + tag);
+				insertHTML('<br>' + tag);
 				range = document.createRange();
 				range.setStart(startNode, 0);
 				range.setEnd(startNode, 0);
 				selection.removeAllRanges();
 				selection.addRange(range);
-				document.execCommand('insertHTML', false, tag + '<br>');
+				insertHTML(tag + '<br>');
 				range.setStart(startNode.previousSibling?.previousSibling, 0);
 				range.setEnd(endNode.nextSibling?.nextSibling, tag.length);
 				selection.removeAllRanges();
@@ -1229,7 +1220,7 @@
 			const insertLine = (tag) => {
 				var selection = document.getSelection(), range = selection.getRangeAt(0);
 				var start = range.startContainer, offset = range.startOffset;
-				document.execCommand('insertHTML', false, '<br><br>' + tag + '<br><br>');
+				insertHTML('<br><br>' + tag + '<br><br>');
 
 				var node = start.previousSibling?.previousSibling?.previousSibling;
 				if (!!node && !node.tagName) {
@@ -1546,7 +1537,7 @@
 					MUPreview.innerHTML = '';
 					MUEditor.focus();
 					HistoryManager.clear();
-					HistoryManager.append('', 0, 0, 0, 0);
+					HistoryManager.append('');
 					return true;
 				}
 
@@ -1692,6 +1683,16 @@
 
 			// 其它相关事件
 			var mover, changer, lineMap = [];
+			const insertHTML = html => {
+				document.execCommand('insertHTML', false, html);
+			};
+			const newID = (len=32) => {
+				var result = [];
+				for (let i = 0; i < len; i ++) {
+					result.push(Math.floor(Math.random() * 36).toString(36));
+				}
+				return result.join('');
+			};
 			const notTextLine = (line, isSpecial=false, blockMark='') => {
 				// 先处理标记
 				if (line.length === 0 || !!line.match(/^ *$/)) return [true, false, blockMark];
@@ -1743,58 +1744,7 @@
 			};
 			const onKey = evt => {
 				if (evt.which === 13) {
-					// 插入新行
-					let selection = document.getSelection(), range = selection.getRangeAt(0);
-					let insert = '<br>';
-					let emptyLast = true;
-					if (range.collapsed) {
-						let content = range.startContainer.wholeText;
-						if (!!content) {
-							let header = content.match(/^([ 　\t>\+\-\*]|\d+\.)*/) || [];
-							header = header[0] || '';
-							if (header.length > 0) emptyLast = false;
-							insert += header;
-						}
-					}
-					insert = insert + '<span class="placeholder"></span><br>';
-					document.execCommand('insertHTML', false, insert);
-
-					// 定位光标
-					let placeholder = MUEditor.querySelector('span.placeholder');
-					placeholder.scrollIntoViewIfNeeded();
-					let node = document.createTextNode('test');
-					MUEditor.insertBefore(node, placeholder);
-					MUEditor.removeChild(placeholder);
-
-					// 整理尾部内容
-					let all = [].map.call(MUEditor.childNodes, n => n);
-					all.reverse();
-					let removeList = [];
-					all.some((node, i) => {
-						if (!!node.tagName) return true;
-						if (node.textContent.length === 0) {
-							MUEditor.removeChild(node);
-							removeList.push(i);
-							return;
-						}
-						return true;
-					});
-					removeList.reverse().forEach(i => all.splice(i, 1));
-					all.reverse();
-
-					range = selection.getRangeAt(0);
-					selection.removeAllRanges();
-					range = document.createRange();
-					range.selectNode(node);
-					selection.addRange(range);
-					document.execCommand('insertHTML', false, '');
-					// node.textContent = '\n';
-					// range.collapse();
-
-					// 末尾处理
-					if (all.last === node && emptyLast) {
-						document.execCommand('insertHTML', false, '<br><br>');
-					}
+					onEnter();
 
 					evt.preventDefault();
 					return false;
@@ -1896,6 +1846,85 @@
 				MUEditor.selectionEnd = start;
 				evt.preventDefault();
 			};
+			const onEnter = () => {
+				var selection = document.getSelection(), range = selection.getRangeAt(0);
+				if (!range) return;
+
+				// 如果选中为空
+				var insert = '';
+				if (range.collapsed) {
+					let line = range.startContainer.wholeText;
+					if (!!line) {
+						let header = line.match(/^([ 　\t>\+\-\*]|\d+\.)+/) || [];
+						if (!!header) {
+							header = header[0];
+							if (line === header) { // 如果所在行只有前缀部分而无正文，则清除为空行
+								let nodes = [].map.call(MUEditor.childNodes, n => n), start = 0, end = nodes.length - 1, index = nodes.indexOf(range.startContainer);
+								if (index >= 0) {
+									for (let i = index; i >= 0; i --) {
+										let n = nodes[i];
+										if (n.tagName === 'BR') {
+											break;
+										}
+										start = i;
+									}
+									for (let i = index; i < nodes.length; i ++) {
+										let n = nodes[i];
+										if (n.tagName === 'BR') {
+											break;
+										}
+										end = i;
+									}
+									if (end >= start) {
+										range.setStart(nodes[start], 0);
+										range.setEnd(nodes[end], nodes[end].textContent.length);
+										selection.removeAllRanges();
+										selection.addRange(range);
+										insertHTML('');
+										return;
+									}
+								}
+							}
+							insert = header;
+						}
+					}
+				}
+
+				// 添加当前位置占位符
+				var phid = newID();
+				insertHTML('<span class="placeholder">' + phid + '</span>');
+				// 去除其它不必要的占位符
+				var phs = MUEditor.querySelectorAll('span.placeholder');
+				[].forEach.call(phs, _ph => {
+					if (_ph.innerText === phid) {
+						ph = _ph;
+						return;
+					}
+					_ph.parentElement.removeChild(_ph);
+				});
+				phid = '<span class="placeholder">' + phid + '</span>';
+
+				var content = MUEditor.innerHTML.replace(/^[ 　\t\r\n]+|[ 　\t\r\n]+$/g, '');
+
+				// 如果在末尾
+				if (content.indexOf(phid) === content.length - phid.length) {
+					content = content.replace(phid, '<br>' + phid + '<br>');
+				}
+				// 如果不在末尾
+				else {
+					content = content.replace(phid, '<br>' + phid);
+				}
+				MUEditor.innerHTML = content;
+				phid = MUEditor.querySelector('span.placeholder');
+				phid.scrollIntoViewIfNeeded();
+
+				// 更改光标位置
+				range.selectNode(phid);
+				selection.removeAllRanges();
+				selection.addRange(range);
+				insertHTML('');
+				if (!!insert && insert.length > 0) insertHTML(insert);
+			};
 			const onEdited = (saveHistory=false) => {
 				if (!!changer) {
 					clearTimeout(changer);
@@ -1908,6 +1937,7 @@
 				lastContent = content;
 				var origin = content;
 
+				// 添加行号信息
 				content = content.split('\n');
 				var isMark = false, isBlock = '';
 				lineMap.splice(0, lineMap.length);
@@ -1927,20 +1957,70 @@
 				markupDoc(content);
 
 				if (!saveHistory) return;
+
+				// 保存历史用于撤销与恢复
 				var selection = document.getSelection();
 				var range = selection.getRangeAt(0);
-				var {all, startNode, startIndex, startOffset, endNode, endIndex, endOffset, selChanged} = ContentController.rearrangeAll();
-				HistoryManager.append(origin, startIndex, startOffset, endIndex - 1, endOffset);
-				console.log(startNode, startIndex, startOffset, endNode, endIndex, endOffset, selChanged);
-				while (endNode.tagName === 'BR') {
-					endNode = endNode.previousSibling;
-					if (endNode) break;
+				var start = [range.startContainer, range.startOffset];
+				var end = [range.endContainer, range.endOffset];
+				var collapsed = range.collapsed;
+				var phs = MUEditor.querySelectorAll('span.placesaver');
+				[].forEach.call(phs, ph => ph.parentElement.removeChild(ph));
+				if (collapsed) {
+					// 如果选区为空，则只要插入当前位置信息即可
+					insertHTML('<span class="placesaver omni"></span>');
+					// 保存当前内容切片到记忆中
+					HistoryManager.append(MUEditor.innerHTML);
+					// 移除当前位置信息
+					let ph = MUEditor.querySelector('span.placesaver');
+					ph.parentElement.removeChild(ph);
 				}
-				if (!startNode || !endNode || !selChanged) return;
-				range.setStart(startNode, startOffset);
-				range.setEnd(endNode, endOffset);
-				selection.removeAllRanges();
-				selection.addRange(range);
+				else {
+					if (start[0] === end[0]) {
+						let nodes = [].map.call(MUEditor.childNodes, n => n);
+						let index = nodes.indexOf(start[0]);
+						// 如果选区不空，则需要加入选区两端信息
+						range.setStart(...end);
+						range.setEnd(...end);
+						selection.removeAllRanges();
+						selection.addRange(range);
+						insertHTML('<span class="placesaver end"></span>');
+						nodes = [].map.call(MUEditor.childNodes, n => n);
+						start[0] = nodes[index];
+						range.setStart(...start);
+						range.setEnd(...start);
+						selection.removeAllRanges();
+						selection.addRange(range);
+						insertHTML('<span class="placesaver start"></span>');
+					}
+					else {
+						// 如果选区不空，则需要加入选区两端信息
+						range.setStart(...end);
+						range.setEnd(...end);
+						selection.removeAllRanges();
+						selection.addRange(range);
+						insertHTML('<span class="placesaver end"></span>');
+						range.setStart(...start);
+						range.setEnd(...start);
+						selection.removeAllRanges();
+						selection.addRange(range);
+						insertHTML('<span class="placesaver start"></span>');
+					}
+					// 保存当前内容切片到记忆中
+					HistoryManager.append(MUEditor.innerHTML);
+					// 恢复选区
+					let nodes = [].map.call(MUEditor.childNodes, n => n);
+					let ph = MUEditor.querySelector('span.placesaver.start');
+					start = nodes.indexOf(ph) - 1;
+					ph.parentElement.removeChild(ph);
+					ph = MUEditor.querySelector('span.placesaver.end');
+					end = nodes.indexOf(ph) + 1;
+					ph.parentElement.removeChild(ph);
+					range.setStartAfter(nodes[start]);
+					range.setEndBefore(nodes[end]);
+					selection.removeAllRanges();
+					selection.addRange(range);
+				}
 			};
 			const onBlur = () => {
 				ContentController.saveRange();
