@@ -11,7 +11,7 @@
 			<div ref="Previewer" class="previewer"></div>
 		</div>
 	</div>
-	<input ref="FileLoader" type="file" />
+	<input ref="FileLoader" type="file" @change="readFile()" />
 </template>
 
 <script>
@@ -41,6 +41,8 @@ const WaitForMarkUpEditorInit = () => new Promise(res => {
 	}
 });
 
+var current = null;
+
 export default {
 	name: "MarkupEditor",
 	data () {
@@ -49,12 +51,69 @@ export default {
 	},
 	components: {},
 	async mounted () {
+		current = this;
+
 		await WaitForMarkUpEditorInit();
-		initMarkUpEditor(this, this.$refs.ToolBar, this.$refs.Editor, this.$refs.Previewer, this.$refs.FileLoader);
+
+		var editor = initMarkUpEditor(
+			this.$refs.Editor,
+			this.$refs.ToolBar,
+			this.$refs.Previewer,
+			this.$refs.ToolBar.querySelector('div.wordcount-hint span.count'),
+			{
+				close: () => {
+					this.$router.push({path: '/'});
+					return true;
+				},
+				help: () => {
+					var win = window.open('/#/markup');
+					win.focus();
+					return true;
+				},
+				'download-file': (editor) => {
+					var content = editor.getContent();
+					var filename = editor.filename;
+					if (!filename) {
+						if (!!editor.title) filename = editor.title + '.mu';
+						else filename = "untitled.mu";
+					}
+					this.download(filename, content);
+					return true;
+				},
+				'upload-file': (editor) => {
+					this.$refs.FileLoader.accept = '.mu';
+					this.$refs.FileLoader.click();
+					return true;
+				},
+			},
+		);
+		current.markupEditor = editor;
 
 		callPageLoaded();
 	},
+	unmounted () {
+		current = null;
+	},
 	methods: {
+		download: (filename, content) => {
+			var blob = new Blob([content], { type: 'text/plain' });
+			var link = URL.createObjectURL(blob);
+			var downloader = newEle('a');
+			downloader.setAttribute('href', link);
+			if (!!filename) downloader.setAttribute('download', filename);
+			else downloader.setAttribute('download', 'untitled.mu');
+			downloader.click();
+		},
+		readFile: () => {
+			var file = current.$refs.FileLoader.files[0];
+			if (!file) return;
+			var reader = new FileReader();
+			reader.onload = () => {
+				current.markupEditor.read(file.name, reader.result);
+			};
+			reader.readAsText(file);
+			current.$refs.FileLoader.value = '';
+		},
 	}
 }
 </script>
