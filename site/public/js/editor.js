@@ -401,6 +401,12 @@ const MenuConfig = [
 	},
 	"line",
 	{
+		name: '预览',
+		icon: 'eye',
+		action: 'preview',
+	},
+	"line",
+	{
 		name: '帮助文档',
 		icon: 'info-circle',
 		action: 'help',
@@ -771,7 +777,6 @@ class Editor extends EventEmitter {
 	actionHandler (action, fromKB=false, ...data) {
 		if (!fromKB) this.restoreRange();
 		var handler = this.ActionHandlers.get(action);
-		if (!handler) console.log(action);
 		if (!handler) return;
 		return handler(this, fromKB, ...data);
 	}
@@ -1553,6 +1558,7 @@ class MarkupEditor extends Editor {
 	filename = '';
 	lineMap = [];
 	tmrScroll = null;
+	notAutoUpdateContent = false;
 
 	constructor (config) {
 		super(config);
@@ -1560,6 +1566,8 @@ class MarkupEditor extends Editor {
 		this.Preview = String.is(config.ui.preview) ? document.querySelector(config.ui.preview) : config.ui.preview;
 
 		this.addHandler('ContentUpdated', (editor, fromKB, content) => {
+			if (this.notAutoUpdateContent) return true;
+
 			// 添加行号信息
 			content = content.split('\n');
 			var isMark = false, isBlock = '';
@@ -3011,9 +3019,9 @@ class MarkupEditor extends Editor {
 
 		// 代码与公式
 		if (!blockMark) {
-			if (!!line.match(/^\$\$/)) return [true, isSpecial, '$'];
-			if (!!line.match(/^```/)) return [true, isSpecial, '`'];
-			if (!!line.match(/^(~~~$|~~~[ 　\t\w]+)/)) return [true, isSpecial, '~'];
+			if (!!line.match(/^((>|\-|\+|\*|\d+)[ 　\t]*)*\$\$/)) return [true, isSpecial, '$'];
+			if (!!line.match(/^((>|\-|\+|\*|\d+)[ 　\t]*)*```/)) return [true, isSpecial, '`'];
+			if (!!line.match(/^((>|\-|\+|\*|\d+)[ 　\t]*)*(~~~$|~~~[ 　\t\w]+)/)) return [true, isSpecial, '~'];
 		}
 		else if (blockMark === '$') {
 			if (!!line.match(/^\$\$/)) blockMark = '';
@@ -3077,6 +3085,65 @@ class MarkupEditor extends Editor {
 	}
 }
 
+const resizeEditor = (editor, MUEditor, MUPreview, WordCountHint) => {
+	var width = document.body.getBoundingClientRect().width, fullSize = true;
+	if (width < 1000) {
+		fullSize = false;
+		editor.notAutoUpdateContent = true;
+		MUEditor.parentElement.parentElement.classList.add('no_preview');
+		WordCountHint.parentElement.classList.add('no_preview');
+		console.log(editor, MUEditor, MUPreview, WordCountHint);
+	}
+	if (width <= 690) {
+		let len = editor.MenuBar.items.length;
+		let item = editor.MenuBar.items[len - 3];
+		item.ui.style.display = 'none';
+		item = editor.MenuBar.items[len - 4];
+		item.ui.style.display = 'none';
+		item = editor.MenuBar.items[len - 7];
+		item.ui.style.display = 'none';
+		item = editor.MenuBar.items[len - 8];
+		item.ui.style.display = 'none';
+	}
+	if (width <= 580) {
+		let len = editor.MenuBar.items.length;
+		let item = editor.MenuBar.items[len - 10];
+		item.ui.style.display = 'none';
+		item = editor.MenuBar.items[len - 12];
+		item.ui.style.display = 'none';
+	}
+	if (width <= 440) {
+		let len = editor.MenuBar.items.length;
+		let item = editor.MenuBar.items[len - 15];
+		item.ui.style.display = 'none';
+	}
+	if (width <= 380) {
+		let len = editor.MenuBar.items.length;
+		let item = editor.MenuBar.items[len - 6];
+		item.ui.style.display = 'none';
+		item = editor.MenuBar.items[len - 9];
+		item.ui.style.display = 'none';
+		item = editor.MenuBar.items[len - 11];
+		item.ui.style.display = 'none';
+		item = editor.MenuBar.items[len - 13];
+		item.ui.style.display = 'none';
+		item = editor.MenuBar.items[len - 14];
+		item.ui.style.display = 'none';
+		item = editor.MenuBar.items[len - 16];
+		item.ui.style.display = 'none';
+	}
+
+	if (fullSize) {
+		let len = editor.MenuBar.items.length;
+		let item = editor.MenuBar.items[len - 5];
+		item.ui.style.display = 'none';
+		item = editor.MenuBar.items[len - 6];
+		item.ui.style.display = 'none';
+		MUEditor.parentElement.parentElement.classList.remove('no_preview');
+		WordCountHint.parentElement.classList.remove('no_preview');
+	}
+};
+
 window.initMarkUpEditor = (MUEditor, MUToolbar, MUPreview, WordCountHint, callbacks) => {
 	var editor = new MarkupEditor({
 		ui: {
@@ -3089,10 +3156,11 @@ window.initMarkUpEditor = (MUEditor, MUToolbar, MUPreview, WordCountHint, callba
 		shortcuts: Shortcuts,
 		toolbar: MenuConfig
 	});
+	resizeEditor(editor, MUEditor, MUPreview, WordCountHint);
 	editor.addHandler('markupUpdated', () => {
 		var latexList = MUPreview.querySelectorAll('.latex');
 		for (let latex of latexList) {
-			let math = latex.innerText;
+			let math = 'MATHJAX::' + latex.innerText;
 			latex._origin = math;
 			let output = sessionStorage.getItem(math);
 			if (!!output) {
@@ -3104,8 +3172,24 @@ window.initMarkUpEditor = (MUEditor, MUToolbar, MUPreview, WordCountHint, callba
 			}
 		}
 	});
+	editor.addHandler('preview', async () => {
+		var app = MUEditor.parentElement.parentElement;
+		if (app.classList.contains('show_preview')) {
+			app.classList.remove('show_preview');
+		}
+		else {
+			app.classList.add('show_preview');
+			let content = editor.getContent();
+			let markup = await MarkUp.fullParse(content, {
+				showtitle: true,
+				classname: 'markup-content',
+			});
+			MUPreview.innerHTML = markup.content;
+			editor.title = markup.title;
+			editor.actionHandler('markupUpdated');
+		}
+	});
 	MUPreview.addEventListener('click', evt => {
-		console.log('Click', evt);
 		evt.preventDefault();
 	});
 	if (!initMathJax.initialized) {
@@ -3114,6 +3198,8 @@ window.initMarkUpEditor = (MUEditor, MUToolbar, MUPreview, WordCountHint, callba
 			var [event, target] = quests;
 			if (event !== 'End Process') return;
 			if (target === document.body) return;
+			var math = (target.innerText || '').toLowerCase();
+			if (math.length === 0 || math.indexOf('error') >= 0) return;
 			sessionStorage.setItem(target._origin, target.innerHTML);
 		});
 	}
