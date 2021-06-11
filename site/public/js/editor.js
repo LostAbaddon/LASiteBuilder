@@ -1724,6 +1724,15 @@ class MarkupEditor extends Editor {
 		this.addHandler('insert-block', editor => {
 			return this.generateRefBlock();
 		});
+
+		this.addHandler('Paste', (editor, fromKB, event) => {
+			var content = event.clipboardData.getData('text/html');
+			if (!content) return false;
+			MarkUp.reverse(content).then(result => {
+				editor.insertBlock(result.split('\n'), true);
+			});
+			return true;
+		});
 	}
 	clear () {
 		this.title = 'untitled';
