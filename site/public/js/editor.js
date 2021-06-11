@@ -4,6 +4,7 @@ const AvailableColors = ['red', 'green', 'blue', 'yellow', 'gold', 'white', 'sil
 const ColorHeadMarkReg = new RegExp('\\[(' + AvailableColors.join('|') + ')\\]');
 const ColorTailMark = '[/]';
 const QuoteTypes = ['quote', 'info', 'success', 'warning', 'danger'];
+const HeaderLevel = { '=': 6, '-': 5, '+': 4, '_': 4, '*': 3, '#': 2, '.': 1 };
 
 const MenuConfig = [
 	[
@@ -2336,8 +2337,9 @@ class MarkupEditor extends Editor {
 		if (!content) return false;
 
 		// 如果疑似下划线标记
-		if (content.match(/^(\-{3,}|={3,})$/)) {
-			let curr = content.indexOf('-') >= 0 ? 5 : 6;
+		if (content.match(/^(\-{3,}|={3,}|\+{3,}|_{3,}|\*{3,}|#{3,}|\.{3,})$/)) {
+			let char = content.substring(0, 1);
+			let curr = HeaderLevel[char] || 0;
 			startLine = startLine.previousSibling;
 			if (!startLine) return false;
 			content = startLine.textContent;
@@ -2356,9 +2358,10 @@ class MarkupEditor extends Editor {
 			let next = startLine.nextSibling;
 			if (!!next) {
 				let ctx = next.textContent;
-				if (ctx.match(/^(\-{3,}|={3,})$/)) {
+				if (ctx.match(/^(\-{3,}|={3,}|\+{3,}|_{3,}|\*{3,}|#{3,}|\.{3,})$/)) {
 					multi = true;
-					let curr = ctx.indexOf('-') >= 0 ? 5 : 6;
+					let char = content.substring(0, 1);
+					let curr = HeaderLevel[char] || 0;
 					current = Math.max(c, curr);
 					endLine = next;
 				}
