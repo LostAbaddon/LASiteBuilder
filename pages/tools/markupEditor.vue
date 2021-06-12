@@ -32,7 +32,7 @@ const WaitForMarkUpEditorInit = () => new Promise(res => {
 	WaitForMarkUpEditorResList.add(res);
 });
 
-(new BroadcastChannel('route-updated')).addEventListener('message', ({data}) => {
+PageBroadcast.on('route-updated', ({data}) => {
 	if (location.hash.indexOf('tools/markupEditor') > 0) {
 		document.body.setAttribute('mode', 'editor');
 	}

@@ -9,8 +9,7 @@
 export default {
 	name: "latex",
 	async mounted () {
-		var chChangeLoadingHint = new BroadcastChannel('change-loading-hint');
-		chChangeLoadingHint.postMessage({
+		PageBroadcast.emit('change-loading-hint', {
 			name: '加载中……',
 			action: 'show'
 		});
@@ -28,7 +27,7 @@ export default {
 		this.$el.querySelector('.container').innerHTML = html;
 		await this.afterMarkUp();
 
-		chChangeLoadingHint.postMessage({action: 'hide'});
+		PageBroadcast.emit('change-loading-hint', {action: 'hide'});
 	},
 	methods: {
 		onClick (evt) {

@@ -31,8 +31,7 @@
 
 <script>
 var needLoad = true;
-const chChangeLoadingHint = new BroadcastChannel('change-loading-hint');
-chChangeLoadingHint.addEventListener('message', msg => {
+PageBroadcast.on('change-loading-hint', msg => {
 	BallCrush.onLeave();
 });
 

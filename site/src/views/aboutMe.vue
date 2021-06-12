@@ -6,8 +6,7 @@
 export default {
 	name: 'AboutMe',
 	async mounted () {
-		var chChangeLoadingHint = new BroadcastChannel('change-loading-hint');
-		chChangeLoadingHint.postMessage({
+		PageBroadcast.emit('change-loading-hint', {
 			name: '加载中……',
 			action: 'show'
 		});

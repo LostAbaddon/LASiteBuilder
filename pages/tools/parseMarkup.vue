@@ -52,8 +52,7 @@ export default {
 			reader.readAsText(file);
 		}),
 		async parseMarkUp (markup) {
-			var chChangeLoadingHint = new BroadcastChannel('change-loading-hint');
-			chChangeLoadingHint.postMessage({
+			PageBroadcast.emit('change-loading-hint', {
 				name: '解析中……',
 				action: 'show'
 			});
@@ -76,8 +75,7 @@ export default {
 			if (!file) return;
 			if (String.is(file)) return this.parseUrl(file);
 
-			var chChangeLoadingHint = new BroadcastChannel('change-loading-hint');
-			chChangeLoadingHint.postMessage({
+			PageBroadcast.emit('change-loading-hint', {
 				name: '读取中……',
 				action: 'show'
 			});
@@ -99,8 +97,7 @@ export default {
 			callPageLoaded();
 		},
 		async parseUrl (url) {
-			var chChangeLoadingHint = new BroadcastChannel('change-loading-hint');
-			chChangeLoadingHint.postMessage({
+			PageBroadcast.emit('change-loading-hint', {
 				name: '读取中……',
 				action: 'show'
 			});

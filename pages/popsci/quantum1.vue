@@ -673,10 +673,9 @@ import "/public/vendor/swiper/extension.js"
 import "/public/vendor/swiper/swiper.css"
 import "/public/vendor/swiper/extension.css"
 
-const channel = new BroadcastChannel('change-loading-hint');
 var swiper;
 
-channel.addEventListener('message', msg => {
+PageBroadcast.on('change-loading-hint', msg => {
 	if (!msg.data || msg.data.action !== 'show') return;
 	if (!swiper) return;
 	swiper.destroy();
@@ -686,7 +685,7 @@ channel.addEventListener('message', msg => {
 export default {
 	name: "quantum1",
 	async mounted () {
-		channel.postMessage({action: 'show'});
+		PageBroadcast.emit('change-loading-hint', {action: 'show'});
 
 		var bgc = this.$el.querySelector('div.background-slider');
 
