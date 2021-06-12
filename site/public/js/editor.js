@@ -3168,13 +3168,14 @@ window.initMarkUpEditor = (MUEditor, MUToolbar, MUPreview, WordCountHint, callba
 		shortcuts: Shortcuts,
 		toolbar: MenuConfig
 	});
+	var mathMap = new Map();
 	resizeEditor(editor, MUEditor, MUPreview, WordCountHint);
 	editor.addHandler('markupUpdated', () => {
 		var latexList = MUPreview.querySelectorAll('.latex');
 		for (let latex of latexList) {
 			let math = 'MATHJAX::' + latex.innerText;
 			latex._origin = math;
-			let output = sessionStorage.getItem(math);
+			let output = mathMap.get(math);
 			if (!!output) {
 				latex.classList.add('rendered');
 				latex.innerHTML = output;
@@ -3212,7 +3213,7 @@ window.initMarkUpEditor = (MUEditor, MUToolbar, MUPreview, WordCountHint, callba
 			if (target === document.body) return;
 			var math = (target.innerText || '').toLowerCase();
 			if (math.length === 0 || math.indexOf('error') >= 0) return;
-			sessionStorage.setItem(target._origin, target.innerHTML);
+			if (!!target._origin) mathMap.set(target._origin, target.innerHTML);
 		});
 	}
 	editor.newFile();
