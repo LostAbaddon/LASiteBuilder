@@ -34,7 +34,7 @@ export default {
 		this.$el.innerHTML = html;
 		await this.afterMarkUp();
 
-		chChangeLoadingHint.postMessage({action: 'hide'});
+		PageBroadcast.emit('change-loading-hint', {action: 'hide'});
 	},
 	methods: {
 		onClick (evt) {
