@@ -1,15 +1,17 @@
 (() => {
 	class Role {
-		type = 'human';
-		name = '乖宝宝';
-		score = 0;
-		char = [0, 0, 0, 0, 0, false];
-		blackCount = 0;
-		blackWin = 0;
-		blackLose = 0;
-		whiteCount = 0;
-		whiteWin = 0;
-		whiteLose = 0;
+		constructor () {
+			this.type = 'human';
+			this.name = '乖宝宝';
+			this.score = 0;
+			this.char = [0, 0, 0, 0, 0, false];
+			this.blackCount = 0;
+			this.blackWin = 0;
+			this.blackLose = 0;
+			this.whiteCount = 0;
+			this.whiteWin = 0;
+			this.whiteLose = 0;
+		}
 	}
 
 	const AITesterOne = new Role();

@@ -8,17 +8,6 @@
 
 	// AI
 	class AIOne {
-		id = -1;
-		attacktive = 0.5;
-		attitude = 0;
-		incress = 0;
-		center = 0;
-		down = 0;
-		up = 0;
-		level = 1;
-		range = 3;
-		rangeMind = 0;
-		useOracle = false;
 		constructor (id, attacktive, attitude, level, range, rangeMind, useOracle) {
 			this.id = id;
 			this.attacktive = attacktive;
@@ -38,6 +27,7 @@
 			this.range = range;
 			this.useOracle = !!useOracle;
 			if (!isNaN(rangeMind)) this.rangeMind = rangeMind;
+			else this.rangeMind = 0;
 		}
 		go () {
 			if (window.RushGo.finished) return;

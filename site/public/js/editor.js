@@ -443,12 +443,6 @@ const newID = (len=32) => {
 };
 
 class MenuItem {
-	name = '';
-	icon = '';
-	key = '';
-	shortcut = '';
-	ui;
-	container;
 	constructor (name, icon, key, shortcut) {
 		shortcut = !!shortcut ? shortcut.trim() : '';
 		if (!!shortcut) name = name + '（' + shortcut + '）'
@@ -459,6 +453,7 @@ class MenuItem {
 		this.shortcut = shortcut;
 		this.ui = newEle('div', 'menu-item');
 		this.ui.innerHTML = '<i class="fa fas far fab fa-' + icon + '"></i><span class="menu-item-hint">' + name + '</span>';
+		this.container = null;
 		this.ui.addEventListener('click', () => {
 			if (!this.container) return;
 			this.container.onClick(this.key, this);
@@ -485,15 +480,12 @@ class MenuLine extends MenuItem {
 	}
 }
 class MenuGroup {
-	items = [];
-	name = '';
-	icon = '';
-	key = '';
-	btn;
-	group;
-	ui;
-	container;
 	constructor (menus) {
+		this.items = [];
+		this.name = '';
+		this.icon = '';
+		this.key = '';
+		this.container;
 		this.btn = new MenuItem('', '', '');
 		this.btn.container = this;
 		this.group = newEle('div', 'menu-group-area');
@@ -561,10 +553,8 @@ class MenuGroup {
 	}
 }
 class MenuBar {
-	items = [];
-	ui;
-	hooker;
 	constructor (menus, hooker) {
+		this.items = [];
 		this.ui = newEle('div', 'menu-bar');
 		this.hooker = hooker;
 		menus.forEach(menu => {
@@ -618,8 +608,10 @@ class MenuBar {
 }
 
 class HistoryManager {
-	index = -1;
-	memory = [];
+	constructor () {
+		this.index = -1;
+		this.memory = [];
+	}
 	reset (content=null) {
 		this.memory.splice(0, this.memory.length);
 		if (content === null) {
@@ -648,25 +640,23 @@ class HistoryManager {
 }
 
 class Editor extends EventEmitter {
-	Editor = null;
-	Toolbar = null;
-	Shortcuts = new Map();
-	WordCountHint = null;
-	MenuBar = null;
-	ActionHandlers = new Map();
-	Memory = new HistoryManager();
-	LineHeadPrefix = /^[ 　\t]+/;
-
-	imeOn = false;
-	lastContent = '';
-	contentChanged = false;
-	tmrChanger = null;
-	lastRange = null;
-
 	constructor (config) {
 		super();
 
 		if (!config.ui?.editor) return;
+
+		this.Toolbar = null;
+		this.MenuBar = null;
+		this.Shortcuts = new Map();
+		this.ActionHandlers = new Map();
+		this.Memory = new HistoryManager();
+		this.LineHeadPrefix = /^[ 　\t]+/;
+
+		this.imeOn = false;
+		this.lastContent = '';
+		this.contentChanged = false;
+		this.tmrChanger = null;
+		this.lastRange = null;
 
 		// 初始化编辑器UI
 		this.Editor = String.is(config.ui.editor) ? document.querySelector(config.ui.editor) : config.ui.editor;
@@ -1552,17 +1542,15 @@ class Editor extends EventEmitter {
 	}
 }
 class MarkupEditor extends Editor {
-	Preview = null;
-	LineHeadPrefix = /^([ 　\t>\+\*~]|\d+\.[ 　\t]+|\-[ 　\t]+)+/;
-
-	title = 'untitled';
-	filename = '';
-	lineMap = [];
-	tmrScroll = null;
-	notAutoUpdateContent = false;
-
 	constructor (config) {
 		super(config);
+
+		this.LineHeadPrefix = /^([ 　\t>\+\*~]|\d+\.[ 　\t]+|\-[ 　\t]+)+/;
+		this.title = 'untitled';
+		this.filename = '';
+		this.lineMap = [];
+		this.tmrScroll = null;
+		this.notAutoUpdateContent = false;
 
 		this.Preview = String.is(config.ui.preview) ? document.querySelector(config.ui.preview) : config.ui.preview;
 

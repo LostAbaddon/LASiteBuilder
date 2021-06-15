@@ -2,29 +2,10 @@
 	const Win = RushGo.Win;
 	// 辅助类
 	class State {
-		static MustWin = 3;	// 下一步能赢
-		static WillWin = 2;	// 下两步能赢
-		static MayWin = 1;	// 下三步能赢
-		static Normal = 0;
-		static Alone = -1;
-		static MayLose = -2;
-		static WillLose = -3;
-		static MustLose = -4;
-		static Forbidden = -10;
-		static getMax (...states) {
-			if (states.length) return new State();;
-			states.sort((s1, s2) => {
-				var diff = s2.state - s1.state;
-				if (diff !== 0) return diff;
-				return s2.score - s1.score;
-			});
-			return states[0].copy();
-		}
-
-		state = State.Normal;
-		score = 0;
 		constructor (state, score) {
+			this.state = State.Normal;
 			if (!isNaN(state)) this.state = state;
+			this.score = 0;
 			if (!isNaN(score)) this.score = score;
 			this.update();
 		}
@@ -41,22 +22,42 @@
 			return new State(this.state, this.score);
 		}
 	}
+	State.MustWin = 3;	// 下一步能赢
+	State.WillWin = 2;	// 下两步能赢
+	State.MayWin = 1;	// 下三步能赢
+	State.Normal = 0;
+	State.Alone = -1;
+	State.MayLose = -2;
+	State.WillLose = -3;
+	State.MustLose = -4;
+	State.Forbidden = -10;
+	State.getMax = (...states) => {
+		if (states.length) return new State();;
+		states.sort((s1, s2) => {
+			var diff = s2.state - s1.state;
+			if (diff !== 0) return diff;
+			return s2.score - s1.score;
+		});
+		return states[0].copy();
+	};
+
 	class HalfLine {
-		pointCount = 0; // 紧接着的棋数
-		emptyCount = 0; // 棋后空格数
-		borderType = 0; // 0: 边界；1: 敌方；2: 空格
-		neighbor = 0;   // 空格后连续同色棋数，正为己方负为敌方
-		farBorder = 0;	// 0: 边界；1: 空格
+		constructor () {
+			this.pointCount = 0; // 紧接着的棋数
+			this.emptyCount = 0; // 棋后空格数
+			this.borderType = 0; // 0: 边界；1: 敌方；2: 空格
+			this.neighbor = 0;   // 空格后连续同色棋数，正为己方负为敌方
+			this.farBorder = 0;	// 0: 边界；1: 空格
+		}
 		toString () {
 			return this.pointCount + ':' + this.borderType + ':' + this.emptyCount + ':' + this.neighbor;
 		}
 	}
 	class SingleLine {
-		halves = [];
-		pointCount = 0;
-		emptyCount = 0;
-		state = new State();
 		constructor (half1, half2, rangeMind = 0) {
+			this.emptyCount = 0;
+			this.state = new State();
+			this.halves = [];
 			this.halves.push(half1);
 			this.halves.push(half2);
 
@@ -131,12 +132,12 @@
 		}
 	}
 	class CrossPoint {
-		lines = [];
-		lineCount = 0;
-		pointCount = 0;
-		emptyCount = 0;
-		state = new State();
 		constructor (isEnemy, ...lines) {
+			this.lines = [];
+			this.lineCount = 0;
+			this.pointCount = 0;
+			this.emptyCount = 0;
+			this.state = new State();
 			if (!lines || lines.length === 0) return;
 			var mustWins = [], willWins = [], mayWins = [], normals = [], specialValue = 0;
 			lines.forEach(line => {
@@ -233,13 +234,15 @@
 		}
 	}
 	class ValueField {
-		mustWins = [];
-		willWins = [];
-		mayWins = [];
-		normals = [];
-		mayLoses = [];
-		willLoses = [];
-		mustLoses = [];
+		constructor () {
+			this.mustWins = [];
+			this.willWins = [];
+			this.mayWins = [];
+			this.normals = [];
+			this.mayLoses = [];
+			this.willLoses = [];
+			this.mustLoses = [];
+		}
 		get scoreW () {
 			return this.mustWins.length * Win * Win + this.willWins.length * (Win * Win - Win) + this.mayWins.length * Win;
 		}

@@ -29,28 +29,24 @@
 	const TagGameRankList = 'ballcrush_rank';
 
 	class Ball {
-		x = 500;
-		y = 0;
-		r = 30;
-		p = 1;
-		vx = 0;
-		vy = 0;
-		score = 0;
-		mass = 1;
-		hits = 0;
-		color = 'white';
-		border = 'black';
-		text = 'black';
-		isBall = false;
-		isGhost = true;
-		isBlackHole = false;
-		isRedNeck = false;
-		isGolden = false;
 		constructor (vx, vy, r=30, p=1) {
+			this.x = 500;
+			this.y = 0;
 			this.vx = vx;
 			this.vy = vy;
 			this.r = r;
 			this.p = p;
+			this.score = 0;
+			this.mass = 1;
+			this.hits = 0;
+			this.color = 'white';
+			this.border = 'black';
+			this.text = 'black';
+			this.isBall = false;
+			this.isGhost = true;
+			this.isBlackHole = false;
+			this.isRedNeck = false;
+			this.isGolden = false;
 		}
 		move (delta) {
 			// 记录原始位置
@@ -357,12 +353,10 @@
 		}
 	}
 	class Poly extends Ball {
-		poly = 3;
-		ang = 0;
-		length = 0;
-		rotate = 0;
 		constructor (vx, vy, r=30, p=1) {
 			super(vx, vy, r, p);
+			this.length = 0;
+			this.rotate = 0;
 			this.poly = 3 + Math.floor(Math.random() * 4);
 			var range = Math.PI * 2 / this.poly;
 			this.ang = (Math.random() - 0.5) * range;
