@@ -982,7 +982,7 @@
 		try {
 			rankList = JSON.parse(rankList);
 		}
-		catch {
+		catch (err) {
 			rankList = {};
 		}
 		var list;
@@ -1053,7 +1053,7 @@
 		try {
 			stage = JSON.parse(stage);
 		}
-		catch {
+		catch (err) {
 			return false;
 		}
 

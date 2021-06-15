@@ -298,7 +298,7 @@
 			option = JSON.parse(localStorage.gameOption);
 			GameModeOption.forbidden = option.forbidden;
 			GameModeOption.startWithInits = option.startWithInits;
-		} catch {}
+		} catch (err) {}
 		GameModePad.querySelector('input[name="ForbiddenHands"][value="' + GameModeOption.forbidden + '"]').checked = true;
 		GameModePad.querySelector('input[name="StartWithInits"][value="' + GameModeOption.startWithInits + '"]').checked = true;
 

@@ -114,7 +114,7 @@
 				});
 				AIManager.AIList = list;
 			}
-			catch {
+			catch (err) {
 				AIManager.prepare();
 			}
 		}

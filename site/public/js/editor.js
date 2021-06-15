@@ -907,7 +907,7 @@ class Editor extends EventEmitter {
 			selection.removeAllRanges();
 			selection.addRange(range);
 		}
-		catch {
+		catch (err) {
 			return [startLine, 0, endLine, 0, startIndex, endIndex];
 		}
 		return [startLine, startPos, endLine, endPos, startIndex, endIndex];
@@ -1434,7 +1434,7 @@ class Editor extends EventEmitter {
 			selection.removeAllRanges();
 			selection.addRange(this.lastRange);
 		}
-		catch {}
+		catch (err) {}
 		this.lastRange = null;
 	}
 	static insertHTML (html) {
