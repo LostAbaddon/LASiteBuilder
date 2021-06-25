@@ -63,20 +63,6 @@
 </style>
 
 <script>
-var CateMap = {};
-const generateSiteMap = (map, siteMap, parent='') => {
-	for (let path in siteMap) {
-		if (!path) continue;
-		if (['tools', 'entertain', 'library'].includes(path)) continue;
-		let info = siteMap[path];
-		let p = parent + '/' + path;
-		map[p] = info.name;
-		let subs = info.subs;
-		if (!!subs) generateSiteMap(map, subs, p);
-	}
-};
-generateSiteMap(CateMap, SiteMap);
-
 export default {
 	name: "LocalLibrary",
 	data () {
@@ -98,7 +84,7 @@ export default {
 			all.reverse().forEach(art => {
 				if (art.author !== this.SiteOwner) art.name = art.title + ' (' + art.author + ')';
 				else art.name = art.title;
-				if (art.category.length > 0) art.category = art.category.map(cate => CateMap[cate] || cate).join('; ');
+				if (art.category.length > 0) art.category = art.category.map(cate => CatePathMap[cate] || cate).join('; ');
 				else art.category = '未分类';
 			});
 			this.list.splice(0, this.list.length, ...all);

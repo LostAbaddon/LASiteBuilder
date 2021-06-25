@@ -42,19 +42,6 @@ PageBroadcast.on('route-updated', ({data}) => {
 });
 
 var current = null;
-var CateMap = {};
-const generateSiteMap = (map, siteMap, parent='') => {
-	for (let path in siteMap) {
-		if (!path) continue;
-		if (['tools', 'entertain', 'library'].includes(path)) continue;
-		let info = siteMap[path];
-		let p = parent + '/' + path;
-		map[info.name] = p;
-		let subs = info.subs;
-		if (!!subs) generateSiteMap(map, subs, p);
-	}
-};
-generateSiteMap(CateMap, SiteMap);
 
 export default {
 	name: "MarkupEditor",
@@ -172,7 +159,7 @@ export default {
 		generateCate (category) {
 			category = category.filter(k => !!k && !['unsorted', '未分类'].includes(k));
 			if (category.length === 0) return [];
-			return category.map(c => CateMap[c] || c);
+			return category.map(c => CateNameMap[c] || c);
 		},
 	}
 }
