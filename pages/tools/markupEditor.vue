@@ -42,6 +42,19 @@ PageBroadcast.on('route-updated', ({data}) => {
 });
 
 var current = null;
+var CateMap = {};
+const generateSiteMap = (map, siteMap, parent='') => {
+	for (let path in siteMap) {
+		if (!path) continue;
+		if (['tools', 'entertain', 'library'].includes(path)) continue;
+		let info = siteMap[path];
+		let p = parent + '/' + path;
+		map[info.name] = p;
+		let subs = info.subs;
+		if (!!subs) generateSiteMap(map, subs, p);
+	}
+};
+generateSiteMap(CateMap, SiteMap);
 
 export default {
 	name: "MarkupEditor",
@@ -52,6 +65,15 @@ export default {
 	components: {},
 	async mounted () {
 		current = this;
+		var doc = {
+			id: '',
+			title: '',
+			category: [],
+			author: '',
+			description: '',
+			content: '',
+			publish: 0
+		};
 
 		await WaitForMarkUpEditorInit();
 
@@ -61,8 +83,24 @@ export default {
 			this.$refs.Previewer,
 			this.$refs.ToolBar.querySelector('div.wordcount-hint span.count'),
 			{
+				init: (editor) => {
+					var action = this.$route.query;
+					if (!!action) action = action.action;
+					if (!action) action = 'newfile';
+					if (action === 'newfile') {
+						doc.id = BookShelf.newLongID();
+						editor.newFile(this.SiteOwner);
+					}
+					else {
+						BookShelf.getArticle(action).then(data => {
+							doc.id = data.id;
+							editor.read((data.title || 'untitled') + '.mu', data.content);
+						});
+					}
+					return true;
+				},
 				close: () => {
-					this.$router.push({path: '/'});
+					this.$router.push({path: '/tools/localLibrary'});
 					return true;
 				},
 				help: () => {
@@ -85,6 +123,18 @@ export default {
 					this.$refs.FileLoader.click();
 					return true;
 				},
+				'save-article': async (editor) => {
+					var content = editor.getContent();
+					var markup = await MarkUp.fullParse(content);
+					doc.title = markup.title || '无标题文章';
+					doc.author = markup.meta.author || this.SiteOwner;
+					doc.description = markup.meta.description || this.generateDesc(markup.content);
+					doc.content = content;
+					doc.category = this.generateCate(markup.meta.keywords);
+					doc.publish = Date.now();
+					BookShelf.saveArticle(doc);
+					return true;
+				},
 			},
 		);
 		current.markupEditor = editor;
@@ -95,7 +145,7 @@ export default {
 		current = null;
 	},
 	methods: {
-		download: (filename, content) => {
+		download (filename, content) {
 			var blob = new Blob([content], { type: 'text/plain' });
 			var link = URL.createObjectURL(blob);
 			var downloader = newEle('a');
@@ -104,7 +154,7 @@ export default {
 			else downloader.setAttribute('download', 'untitled.mu');
 			downloader.click();
 		},
-		readFile: () => {
+		readFile () {
 			var file = current.$refs.FileLoader.files[0];
 			if (!file) return;
 			var reader = new FileReader();
@@ -113,6 +163,16 @@ export default {
 			};
 			reader.readAsText(file);
 			current.$refs.FileLoader.value = '';
+		},
+		generateDesc (content) {
+			content = content.replace(/<.*?>/gi, '');
+			if (content.length > 150) content = content.substring(0, 148) + "……";
+			return content;
+		},
+		generateCate (category) {
+			category = category.filter(k => !!k && !['unsorted', '未分类'].includes(k));
+			if (category.length === 0) return [];
+			return category.map(c => CateMap[c] || c);
 		},
 	}
 }

@@ -14,12 +14,6 @@ const MenuConfig = [
 			action: 'save-article',
 			shortcut: 'ctrl+S'
 		},
-		{
-			name: '打开本地文档',
-			icon: 'file',
-			action: 'open-article',
-			shortcut: 'ctrl+O'
-		},
 		"line",
 		{
 			name: '下载',
@@ -1751,9 +1745,10 @@ class MarkupEditor extends Editor {
 		this.requestContentUpdate(true, false);
 		this.actionHandler('ContentUpdated', false, content);
 	}
-	newFile () {
+	newFile (author) {
 		this.clear();
 		var content = ['标题：新文档'];
+		if (!!author) content.push('作者：' + author);
 		content.push('更新：' + timeNormalize(new Date()));
 		content.push('关键词：未分类');
 		content.push('');
@@ -3204,7 +3199,7 @@ window.initMarkUpEditor = (MUEditor, MUToolbar, MUPreview, WordCountHint, callba
 			if (!!target._origin) mathMap.set(target._origin, target.innerHTML);
 		});
 	}
-	editor.newFile();
+	if (!editor.actionHandler('init', false)) editor.newFile();
 
 	var selection = document.getSelection(), range = document.createRange();
 	var node = editor.Editor.lastChild;

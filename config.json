@@ -135,12 +135,7 @@
 					"category": "parseMarkup"
 				},
 				{
-					"name": "写字板",
-					"type": "page",
-					"category": "markupEditor"
-				},
-				{
-					"name": "本地文库（制作中）",
+					"name": "本地文库",
 					"type": "page",
 					"category": "localLibrary"
 				},
