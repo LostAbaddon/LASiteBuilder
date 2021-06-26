@@ -4,6 +4,9 @@
 		<span class="sep"></span>
 		<span class="hint right clickable" @click="newArticle">添加文档</span>
 	</section>
+	<section class="cateSelector">
+		<span class="cateItem clickable" v-for="cate in cateList" @click="chooseCate(cate.cate)">{{cate.name}}<span class="hint">{{cate.count}}</span></span>
+	</section>
 	<section class="articleList">
 		<div class="article" v-for="item in list">
 			<span class="title" @click="openArticle(item.id)">{{item.name}}</span>
@@ -32,6 +35,31 @@
 }
 .clickable {
 	cursor: pointer;
+}
+.cateSelector {
+	margin-top: 20px;
+	margin-bottom: 25px;
+}
+.cateSelector .cateItem {
+	margin: 5px 10px;
+	padding: 3px 10px;
+	height: 25px;
+	border-radius: 12px;
+	border: 1px solid rgb(125, 125, 135);
+	background-color: rgb(25, 25, 36);
+	color: rgb(205, 205, 225);
+}
+.cateSelector .cateItem .hint {
+	display: inline-block;
+	width: 16px;
+	height: 16px;
+	margin-left: 5px;
+	border-radius: 8px;
+	background-color: rgb(50, 50, 75);
+	box-shadow: inset 0px 0px 2px rgba(255, 255, 245, 0.6);
+	line-height: 16px;
+	text-align: center;
+	font-size: 12px;
 }
 .articleList {
 	min-height: 300px;
@@ -67,7 +95,8 @@ export default {
 	name: "LocalLibrary",
 	data () {
 		return {
-			list: []
+			list: [],
+			cateList: []
 		}
 	},
 	components: {},
@@ -78,15 +107,41 @@ export default {
 	unmounted () {
 	},
 	methods: {
-		async updateList () {
+		async updateList (cate) {
 			var all = await BookShelf.getAllArticles();
+			var cateList = {}, selAll = !cate;
 			this.$refs.count.innerText = all.length;
-			all.reverse().forEach(art => {
+			all.reverse()
+			all = all.filter(art => {
 				if (art.author !== this.SiteOwner) art.name = art.title + ' (' + art.author + ')';
 				else art.name = art.title;
-				if (art.category.length > 0) art.category = art.category.map(cate => CatePathMap[cate] || cate).join('; ');
-				else art.category = '未分类';
+				var sel = selAll;
+				if (art.category.length > 0) {
+					art.category.forEach(c => {
+						sel = sel || c === cate;
+						if (!selAll) return;
+						var item = cateList[c];
+						if (!item) {
+							item = {
+								cate: c,
+								name: CatePathMap[c] || c,
+								count: 0
+							};
+							cateList[c] = item;
+						}
+						item.count ++;
+					});
+					art.category = art.category.map(cate => CatePathMap[cate] || cate).join('; ');
+				}
+				else {
+					art.category = '未分类';
+					sel = cate === art.category;
+				}
+				return sel;
 			});
+			cateList = Object.keys(cateList).map(cate => cateList[cate]);
+			cateList.sort((a, b) => b.count - a.count);
+			if (selAll) this.cateList.splice(0, this.cateList.length, ...cateList);
 			this.list.splice(0, this.list.length, ...all);
 		},
 		newArticle () {
@@ -108,6 +163,10 @@ export default {
 					await this.updateList();
 				}
 			});
+		},
+		chooseCate (cate) {
+			console.log('>>>> ' + cate);
+			this.updateList(cate);
 		},
 	}
 }
