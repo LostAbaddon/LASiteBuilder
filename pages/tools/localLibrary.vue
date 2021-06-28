@@ -165,7 +165,6 @@ export default {
 			});
 		},
 		chooseCate (cate) {
-			console.log('>>>> ' + cate);
 			this.updateList(cate);
 		},
 	}
