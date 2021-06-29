@@ -661,8 +661,8 @@ class Editor extends EventEmitter {
 		this.Editor.addEventListener('compositionstart', evt => this.onIMEStart(evt));
 		this.Editor.addEventListener('compositionend', evt => this.onIMEEnd(evt));
 		this.Editor.addEventListener('drop', evt => this.onDrop(evt));
-		this.Editor.addEventListener('copy', evt => this.onCopy(evt));
-		this.Editor.addEventListener('cut', evt => this.onCut(evt));
+		// this.Editor.addEventListener('copy', evt => this.onCopy(evt));
+		// this.Editor.addEventListener('cut', evt => this.onCut(evt));
 		this.Editor.addEventListener('paste', evt => this.onPaste(evt));
 		this.Editor.addEventListener('blur', evt => this.onBlur(evt));
 		this.Editor.parentElement.addEventListener('mousewheel', evt => this.onWheel(evt));
@@ -1035,86 +1035,7 @@ class Editor extends EventEmitter {
 			lines = paste.split('\n');
 		}
 
-		var [startLine, startOffset, endLine, endOffset] = this.optimizeContent();
-		var rest = endLine.innerText.substring(endOffset), next = endLine.nextSibling;
-		var lastLine = startLine;
-
-		var all = this.getLines(), sIdx = all.indexOf(startLine), eIdx = all.indexOf(endLine);
-		for (let i = sIdx + 1; i <= eIdx; i ++) {
-			this.Editor.removeChild(all[i]);
-		}
-
-		startLine.innerText = startLine.innerText.substring(0, startOffset);
-		if (isBlock) {
-			let p = newEle('p');
-			let line = lines.shift();
-			if (line.length > 0) p.innerText = line;
-			else p.innerHTML = '<br>';
-			if (!!next) {
-				this.Editor.insertBefore(p, next);
-			}
-			else {
-				this.Editor.appendChild(p);
-			}
-			startLine = p;
-			startOffset = 0
-			lastLine = p;
-		}
-		else {
-			let line = lines.shift();
-			startLine.innerText = startLine.innerText + line;
-		}
-		lines.forEach(line => {
-			line = line || '';
-			var p = newEle('p');
-			if (line.length > 0) p.innerText = line;
-			else p.innerHTML = '<br>';
-			if (!!next) {
-				this.Editor.insertBefore(p, next);
-			}
-			else {
-				this.Editor.appendChild(p);
-			}
-			lastLine = p;
-		});
-		if (rest.length > 0) {
-			if (isBlock) {
-				let p = newEle('p');
-				p.innerText = rest;
-				endOffset = 0;
-				if (!!next) {
-					this.Editor.insertBefore(p, next);
-				}
-				else {
-					this.Editor.appendChild(p);
-				}
-				lastLine = p;
-			}
-			else {
-				let text = lastLine.innerText;
-				if (text === '\n') text = '';
-				endOffset = text.length;
-				lastLine.innerText = text + rest;
-			}
-		}
-		else {
-			endOffset = lastLine.innerText.replace(/^\n+|\n+$/g, '').length;
-		}
-		endLine = lastLine;
-
-		startLine = startLine.childNodes.item(0);
-		endLine = endLine.childNodes.item(0);
-		var selection = document.getSelection();
-		var range = document.createRange();
-		range.setStart(startLine, startOffset);
-		range.setEnd(endLine, endOffset);
-		selection.removeAllRanges();
-		selection.addRange(range);
-
-		this.contentChanged = true;
-		// 延时触发内容改变事件
-		this.requestContentUpdate();
-
+		this.insertBlock(lines, true, true, false);
 		evt.preventDefault();
 	}
 	onEnter (evt) {
@@ -1333,7 +1254,7 @@ class Editor extends EventEmitter {
 		this.requestContentUpdate(true, true);
 		return true;
 	}
-	insertBlock (blocks, needUpdate, startLine, startOffset, endLine, endOffset) {
+	insertBlock (blocks, sameLine, needUpdate, selectBlocks, startLine, startOffset, endLine, endOffset) {
 		if (!startLine) {
 			[startLine, startOffset, endLine, endOffset] = this.optimizeContent();
 		}
@@ -1341,11 +1262,21 @@ class Editor extends EventEmitter {
 		var left = endLine.textContent;
 		left = left.substring(endOffset);
 		var content = startLine.textContent.substring(0, startOffset);
-		if (content.length === 0) {
-			startLine.innerHTML = '<br>';
+		if (sameLine) {
+			blocks[0] = content + blocks[0];
+			endOffset = blocks[blocks.length - 1].length;
+			blocks[blocks.length - 1] = blocks[blocks.length - 1] + left;
+			content = '';
+			left = '';
 		}
 		else {
-			startLine.innerText = content;
+			if (content.length === 0) {
+				startLine.innerHTML = '<br>';
+			}
+			else {
+				startLine.innerText = content;
+			}
+			startOffset = 0;
 		}
 
 		var lines = this.getLines();
@@ -1356,6 +1287,7 @@ class Editor extends EventEmitter {
 		}
 
 		var next = endLine.nextElementSibling;
+		if (sameLine) next = startLine;
 		if (!next) {
 			next = newEle('p');
 			if (left.length === 0) {
@@ -1366,7 +1298,7 @@ class Editor extends EventEmitter {
 			}
 			this.Editor.appendChild(next);
 		}
-		else {
+		else if (!sameLine) {
 			let n = newEle('p');
 			if (left.length === 0) {
 				n.innerHTML = '<br>';
@@ -1378,9 +1310,11 @@ class Editor extends EventEmitter {
 			next = n;
 		}
 
-		left = newEle('p');
-		left.innerHTLM = '<br>';
-		this.Editor.insertBefore(left, next);
+		if (!sameLine) {
+			left = newEle('p');
+			left.innerHTLM = '<br>';
+			this.Editor.insertBefore(left, next);
+		}
 
 		if (String.is(blocks)) blocks = [blocks];
 		blocks.forEach((line, i) => {
@@ -1388,20 +1322,27 @@ class Editor extends EventEmitter {
 			if (line.length === 0) p.innerHTML = '<br>';
 			else p.innerText = line;
 			this.Editor.insertBefore(p, next);
-			if (i === 0) startLine = p;
+			if (i === 0) content = p;
 			endLine = p;
 		});
 
-		left = newEle('p');
-		left.innerHTLM = '<br>';
-		this.Editor.insertBefore(left, next);
+		if (!sameLine) {
+			left = newEle('p');
+			left.innerHTLM = '<br>';
+			this.Editor.insertBefore(left, next);
+		}
+		else {
+			this.Editor.removeChild(startLine);
+		}
 
 		var selection = document.getSelection();
 		var range = document.createRange();
-		startLine = startLine.childNodes.item(0);
+		startLine = content.childNodes.item(0);
 		endLine = endLine.childNodes.item(0);
-		range.setStart(startLine, 0);
-		range.setEnd(endLine, endLine.textContent.length);
+		if (!sameLine) endOffset = endLine.textContent.length;
+		if (selectBlocks) range.setStart(startLine, startOffset);
+		else range.setStart(endLine, endOffset);
+		range.setEnd(endLine, endOffset);
 		selection.removeAllRanges();
 		selection.addRange(range);
 
@@ -1712,7 +1653,7 @@ class MarkupEditor extends Editor {
 			var content = event.clipboardData.getData('text/html');
 			if (!content) return false;
 			MarkUp.reverse(content).then(result => {
-				editor.insertBlock(result.split('\n'), true);
+				editor.insertBlock(result.split('\n'), true, true, false);
 			});
 			return true;
 		});
@@ -2307,7 +2248,7 @@ class MarkupEditor extends Editor {
 			}
 			table.push(line.join('|'));
 		}
-		this.insertBlock(table, true, startLine, startOffset, endLine, endOffset);
+		this.insertBlock(table, false, true, true, startLine, startOffset, endLine, endOffset);
 	}
 	toggleHeader (level) {
 		if (!(level >= 0 && level <= 6)) return false;
@@ -2576,14 +2517,14 @@ class MarkupEditor extends Editor {
 		code.push('``` javascript');
 		code.push('codes here...');
 		code.push('```');
-		return this.insertBlock(code, true);
+		return this.insertBlock(code, false, true, true);
 	}
 	insertLaTeX () {
 		var code = [];
 		code.push('$$');
 		code.push('latex equation here...');
 		code.push('$$');
-		return this.insertBlock(code, true);
+		return this.insertBlock(code, false, true, true);
 	}
 	toggleAlign (align) {
 		if (align !== 'center' && align !== 'right') align = 'left'
@@ -2818,7 +2759,7 @@ class MarkupEditor extends Editor {
 		else if (type === 'gradient') line = '+++';
 		else if (type === 'wavy') line = '~~~';
 		else if (type === 'star') line = '***';
-		this.insertBlock(line, true, startLine, startOffset, endLine, endOffset);
+		this.insertBlock(line, false, true, true, startLine, startOffset, endLine, endOffset);
 		return true;
 	}
 	generateRefBlock () {
