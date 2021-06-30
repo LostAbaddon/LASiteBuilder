@@ -661,8 +661,8 @@ class Editor extends EventEmitter {
 		this.Editor.addEventListener('compositionstart', evt => this.onIMEStart(evt));
 		this.Editor.addEventListener('compositionend', evt => this.onIMEEnd(evt));
 		this.Editor.addEventListener('drop', evt => this.onDrop(evt));
-		// this.Editor.addEventListener('copy', evt => this.onCopy(evt));
-		// this.Editor.addEventListener('cut', evt => this.onCut(evt));
+		this.Editor.addEventListener('copy', evt => this.onCopy(evt));
+		this.Editor.addEventListener('cut', evt => this.onCut(evt));
 		this.Editor.addEventListener('paste', evt => this.onPaste(evt));
 		this.Editor.addEventListener('blur', evt => this.onBlur(evt));
 		this.Editor.parentElement.addEventListener('mousewheel', evt => this.onWheel(evt));
@@ -956,65 +956,76 @@ class Editor extends EventEmitter {
 	}
 	onCopy (evt) {
 		var selection = document.getSelection(), range = selection.getRangeAt(0);
+
 		if (!range.collapsed) {
-			if (!!evt.clipboardData && !!evt.clipboardData.setData) {
-				let lines = [];
-				for (let node of range.cloneContents().childNodes) {
-					lines.push(node.textContent.replace(/\n/gi, ''));
-				}
-				lines = lines.join('<br>');
-				evt.clipboardData.setData('text/html', lines);
-				evt.preventDefault();
-			}
+			// if (!!evt.clipboardData && !!evt.clipboardData.setData) {
+			// 	let lines = [];
+			// 	for (let node of range.cloneContents().childNodes) {
+			// 		lines.push(node.textContent.replace(/\n/gi, ''));
+			// 	}
+			// 	lines = lines.join('<br>');
+			// 	evt.clipboardData.setData('text/html', lines);
+			// 	evt.preventDefault();
+			// }
 			return;
 		}
 
 		var line = Editor.getLineOfNode(range.startContainer);
-		if (!!evt.clipboardData && !!evt.clipboardData.setData) {
-			let content = '<p class="newline">' + line.innerText + '</p>';
-			evt.clipboardData.setData('text/html', content);
-		}
-		else {
-			let rng = document.createRange();
-			rng.selectNode(line);
-			document.execCommand('copy');
-		}
-		evt.preventDefault();
+		var rng = document.createRange();
+		rng.selectNode(line);
+		var sel = document.getSelection();
+		sel.removeAllRanges();
+		sel.addRange(rng);
+		// if (!!evt.clipboardData && !!evt.clipboardData.setData) {
+		// 	let content = '<p class="newline">' + line.innerText + '</p>';
+		// 	evt.clipboardData.setData('text/html', content);
+		// }
+		// else {
+		// 	let rng = document.createRange();
+		// 	rng.selectNode(line);
+		// 	document.execCommand('copy');
+		// }
+		// evt.preventDefault();
 	}
 	onCut (evt) {
 		var selection = document.getSelection(), range = selection.getRangeAt(0);
 		if (!range.collapsed) {
-			if (!!evt.clipboardData && !!evt.clipboardData.setData) {
-				let lines = [];
-				for (let node of range.cloneContents().childNodes) {
-					lines.push(node.textContent.replace(/\n/gi, ''));
-				}
-				lines = lines.join('<br>');
-				evt.clipboardData.setData('text/html', lines);
-				Editor.insertHTML('');
-				this.contentChanged = true;
-				this.requestContentUpdate(true);
-				evt.preventDefault();
-			}
+			// if (!!evt.clipboardData && !!evt.clipboardData.setData) {
+			// 	let lines = [];
+			// 	for (let node of range.cloneContents().childNodes) {
+			// 		lines.push(node.textContent.replace(/\n/gi, ''));
+			// 	}
+			// 	lines = lines.join('<br>');
+			// 	evt.clipboardData.setData('text/html', lines);
+			// 	Editor.insertHTML('');
+			// 	this.contentChanged = true;
+			// 	this.requestContentUpdate(true);
+			// 	evt.preventDefault();
+			// }
 			return;
 		}
 
 		var line = Editor.getLineOfNode(range.startContainer);
-		if (!!evt.clipboardData && !!evt.clipboardData.setData) {
-			let content = '<p class="newline">' + line.innerText + '</p>';
-			evt.clipboardData.setData('text/html', content);
-			this.Editor.removeChild(line);
-		}
-		else {
-			let rng = document.createRange();
-			rng.selectNode(line);
-			document.execCommand('cut');
-		}
+		var rng = document.createRange();
+		rng.selectNode(line);
+		var sel = document.getSelection();
+		sel.removeAllRanges();
+		sel.addRange(rng);
+		// if (!!evt.clipboardData && !!evt.clipboardData.setData) {
+		// 	let content = '<p class="newline">' + line.innerText + '</p>';
+		// 	evt.clipboardData.setData('text/html', content);
+		// 	this.Editor.removeChild(line);
+		// }
+		// else {
+		// 	let rng = document.createRange();
+		// 	rng.selectNode(line);
+		// 	document.execCommand('cut');
+		// }
 
-		this.contentChanged = true;
-		this.requestContentUpdate(true);
+		// this.contentChanged = true;
+		// this.requestContentUpdate(true);
 
-		evt.preventDefault();
+		// evt.preventDefault();
 	}
 	onPaste (evt) {
 		var done = !!this.actionHandler('Paste', true, evt);
