@@ -2966,9 +2966,13 @@ class MarkupEditor extends Editor {
 
 		// 代码与公式
 		if (!blockMark) {
-			if (!!line.match(/^((>|\-|\+|\*|\d+)[ 　\t]*)*\$\$/)) return [true, isSpecial, '$'];
-			if (!!line.match(/^((>|\-|\+|\*|\d+)[ 　\t]*)*```/)) return [true, isSpecial, '`'];
-			if (!!line.match(/^((>|\-|\+|\*|\d+)[ 　\t]*)*(~~~$|~~~[ 　\t\w]+)/)) return [true, isSpecial, '~'];
+			let m = line.match(/(\$\$|~~~|```)/);
+			if (!!m) {
+				let p = m.index;
+				let pre = line.substring(0, p);
+				let q = pre.match(/(>|\-|\+|\*|\d+| |　|\t)*/);
+				if (!!q && q[0] === pre) return [true, isSpecial, m[0].substring(0, 1)];
+			}
 		}
 		else if (blockMark === '$') {
 			if (!!line.match(/^\$\$/)) blockMark = '';
