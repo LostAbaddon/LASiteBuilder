@@ -98,7 +98,14 @@
 				{
 					"name": "IT相关",
 					"type": "viewer",
-					"category": "IT"
+					"category": "IT",
+					"subs": [
+						{
+							"name": "区块链",
+							"type": "viewer",
+							"category": "blockchain"
+						}
+					]
 				}
 			]
 		},
@@ -167,6 +174,11 @@
 					"category": "training"
 				},
 				{
+					"name": "终极生命",
+					"type": "page",
+					"category": "ultralife"
+				},
+				{
 					"name": "三消俄罗斯方块（迁移中）",
 					"type": "page",
 					"category": "tritetris"
@@ -188,6 +200,11 @@
 					"type": "page",
 					"category": "",
 					"subs": [
+						{
+							"name": "Web常用色彩表",
+							"type": "page",
+							"category": "webcolor"
+						},
 						{
 							"name": "中国古代常用色",
 							"type": "page",
