@@ -518,7 +518,7 @@ class Colony {
 		line.appendChild(inputter);
 		container.appendChild(line);
 		var color = randomColor();
-		genePool.push([color, gene, 'rgb(' + color.join(',') + ')']);
+		genePool.push([color, inputter, 'rgb(' + color.join(',') + ')']);
 	};
 
 	PageBroadcast.on('page-resize', (w, h) => {
@@ -548,10 +548,17 @@ class Colony {
 				trigger.innerHTML = '暂停';
 				let map = [];
 				genePool.forEach((g, i) => {
-					var name = JSON.stringify(g[1]);
+					var gd = g[1].innerText;
+					try {
+						gd = JSON.parse(gd);
+					}
+					catch {
+						return;
+					}
+					var name = JSON.stringify(gd);
 					var dna = geneMap[name];
 					if (!dna) {
-						dna = new DNA(randomColor(), g[1]);
+						dna = new DNA(randomColor(), gd);
 						geneMap[name] = dna;
 					}
 					map[i] = dna;
