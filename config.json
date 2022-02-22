@@ -192,7 +192,7 @@
 		},
 		{
 			"name": "资料库",
-			"type": "folder",
+			"type": "viewer",
 			"category": "library",
 			"subs": [
 				{
