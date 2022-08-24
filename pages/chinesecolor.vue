@@ -2174,7 +2174,9 @@ export default {
 		onClick (evt) {
 			var ele = evt.target;
 			this.$el.querySelector('.container').style.backgroundColor = ele.style.backgroundColor;
-			navigator.clipboard.writeText(ele.style.backgroundColor).then(() => {
+			var color = ele.style.backgroundColor;
+			color = color.replace('rgb(', 'rgba(').replace(')', ', 1.0)');
+			navigator.clipboard.writeText(color).then(() => {
 				notify({
 					title: "RGB值已复制到剪切板",
 					duration: 3000,
