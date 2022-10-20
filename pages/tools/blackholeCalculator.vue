@@ -165,7 +165,7 @@
 <style scoped>
 .table {
 	display: block;
-	width: 800px;
+	min-width: 640px;
 }
 .table > div {
 	display: block;
