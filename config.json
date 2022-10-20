@@ -7,7 +7,7 @@
 	"publish": "C:\\Users\\Asus\\Documents\\LostAbaddonSite",
 	"jLAss": ["math", "extends"],
 	"database": "granary",
-	"lifecycleX": "lifecycle.js",
+	"lifecycle": "lifecycle.js",
 	"siteMap": [
 		{
 			"name": "随笔",
@@ -145,6 +145,11 @@
 					"name": "本地文库",
 					"type": "page",
 					"category": "localLibrary"
+				},
+				{
+					"name": "黑洞计算器",
+					"type": "page",
+					"category": "blackholeCalculator"
 				},
 				{
 					"name": "计算器（迁移中）",
