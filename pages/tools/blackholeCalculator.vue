@@ -15,7 +15,7 @@
 		<div class="line">
 			<span class="name">质量</span>
 			<span class="value"><input type="number" v-model="mass.value" @keyup.enter="calculate('mass')" /></span>
-			<span class="unity"><select v-model="mass.unity">
+			<span class="unity"><select v-model="mass.unity" @change="changeUnity('mass')">
 				<option value=0>太阳质量</option>
 				<option value=1>地球质量</option>
 				<option value=2>吨</option>
@@ -30,7 +30,7 @@
 		<div class="line">
 			<span class="name">视界半径</span>
 			<span class="value"><input type="number" v-model="radius.value" @keyup.enter="calculate('radius')" /></span>
-			<span class="unity"><select v-model="radius.unity">
+			<span class="unity"><select v-model="radius.unity" @change="changeUnity('radius')">
 				<option value=0>秒差距</option>
 				<option value=1>光年</option>
 				<option value=2>天文单位</option>
@@ -47,7 +47,7 @@
 		<div class="line">
 			<span class="name">视界面积</span>
 			<span class="value"><input type="number" v-model="surface.value" @keyup.enter="calculate('surface')" /></span>
-			<span class="unity"><select v-model="surface.unity">
+			<span class="unity"><select v-model="surface.unity" @change="changeUnity('surface')">
 				<option value=0>平方秒差距</option>
 				<option value=1>平方光年</option>
 				<option value=2>平方天文单位</option>
@@ -64,7 +64,7 @@
 		<div class="line">
 			<span class="name">等效密度</span>
 			<span class="value"><input type="number" v-model="density.value" @keyup.enter="calculate('density')" /></span>
-			<span class="unity"><select v-model="density.unity">
+			<span class="unity"><select v-model="density.unity" @change="changeUnity('density')">
 				<option value=0>太阳密度</option>
 				<option value=1>地球密度</option>
 				<option value=2>千克/立方米</option>
@@ -76,7 +76,7 @@
 		<div class="line">
 			<span class="name">表面引力</span>
 			<span class="value"><input type="number" v-model="gravity.value" @keyup.enter="calculate('gravity')" /></span>
-			<span class="unity"><select v-model="gravity.unity">
+			<span class="unity"><select v-model="gravity.unity" @change="changeUnity('gravity')">
 				<option value=0>平均地表引力</option>
 				<option value=1>米/秒平方</option>
 				<option value=2>普朗克加速度</option>
@@ -86,7 +86,7 @@
 		<div class="line">
 			<span class="name">表面潮汐力</span>
 			<span class="value"><input type="number" v-model="tide.value" @keyup.enter="calculate('tide')" /></span>
-			<span class="unity"><select v-model="tide.unity">
+			<span class="unity"><select v-model="tide.unity" @change="changeUnity('tide')">
 				<option value=0>平均地表潮汐力</option>
 				<option value=1>米/秒平方/米</option>
 				<option value=2>普朗克单位</option>
@@ -96,7 +96,7 @@
 		<div class="line">
 			<span class="name">落到奇点所需时间</span>
 			<span class="value"><input type="number" v-model="time.value" @keyup.enter="calculate('time')" /></span>
-			<span class="unity"><select v-model="time.unity">
+			<span class="unity"><select v-model="time.unity" @change="changeUnity('time')">
 				<option value=0>亿年</option>
 				<option value=1>百万年</option>
 				<option value=2>万年</option>
@@ -121,7 +121,7 @@
 		<div class="line">
 			<span class="name">温度</span>
 			<span class="value"><input type="number" v-model="temperature.value" @keyup.enter="calculate('temperature')" /></span>
-			<span class="unity"><select v-model="temperature.unity">
+			<span class="unity"><select v-model="temperature.unity" @change="changeUnity('temperature')">
 				<option value=0>开尔文</option>
 				<option value=1>摄氏度</option>
 				<option value=2>华氏度</option>
@@ -132,7 +132,7 @@
 		<div class="line">
 			<span class="name">光通量功率</span>
 			<span class="value"><input type="number" v-model="luminousity.value" @keyup.enter="calculate('luminousity')" /></span>
-			<span class="unity"><select v-model="luminousity.unity">
+			<span class="unity"><select v-model="luminousity.unity" @change="changeUnity('luminousity')">
 				<option value=0>瓦</option>
 				<option value=1>千瓦（kW）</option>
 				<option value=2>兆瓦（MW）</option>
@@ -143,7 +143,7 @@
 		<div class="line">
 			<span class="name">寿命</span>
 			<span class="value"><input type="number" v-model="lifetime.value" @keyup.enter="calculate('lifetime')" /></span>
-			<span class="unity"><select v-model="lifetime.unity">
+			<span class="unity"><select v-model="lifetime.unity" @change="changeUnity('lifetime')">
 				<option value=0>亿年</option>
 				<option value=1>百万年</option>
 				<option value=2>万年</option>
@@ -373,6 +373,7 @@ const Convert2Mass = {
 		return mass2 ** 0.5;
 	},
 	temperature ({value, unity}) {
+		unity = unity * 1;
 		var temperature;
 		if (unity === 3) {
 			temperature = value * Unities.temperature[unity];
@@ -430,6 +431,7 @@ const CalculateFromMass = {
 		return (mass ** 2) * (4 * Math.PI * Constants.gravity) / (Constants.planckbar * Constants.lightspeed);
 	},
 	temperature (mass, unity) {
+		unity = unity * 1;
 		var temperature = (Constants.planckbar * (Constants.lightspeed ** 3)) / (8 * Math.PI * Constants.boltzman * Constants.gravity) / mass;
 		if (unity === 0) return temperature;
 		if (unity === 3) return temperature / Unities.temperature[3];
@@ -453,46 +455,57 @@ export default {
 			mass: {
 				value: 1,
 				unity: 0,
+				last: 0,
 			},
 			radius: {
 				value: 1,
 				unity: 4,
+				last: 4,
 			},
 			surface: {
 				value: 1,
 				unity: 4,
+				last: 4,
 			},
 			density: {
 				value: 1,
 				unity: 0,
+				last: 0,
 			},
 			gravity: {
 				value: 1,
 				unity: 1,
+				last: 1,
 			},
 			tide: {
 				value: 1,
 				unity: 1,
+				last: 1,
 			},
 			time: {
 				value: 1,
 				unity: 8,
+				last: 8,
 			},
 			entropy: {
 				value: 1,
 				unity: 0,
+				last: 0,
 			},
 			temperature: {
 				value: 1,
 				unity: 0,
+				last: 0,
 			},
 			luminousity: {
 				value: 1,
 				unity: 0,
+				last: 0,
 			},
 			lifetime: {
 				value: 1,
 				unity: 4,
+				last: 4,
 			},
 		}
 	},
@@ -513,6 +526,42 @@ export default {
 				if (key === type) continue;
 				this[key].value = CalculateFromMass[key](mass, this[key].unity);
 			}
+		},
+		changeUnity (type) {
+			var info = this[type];
+			if (info.last + '' === info.unity + '') return;
+
+			let value = info.value;
+			if (type === 'temperature') {
+				let temperature;
+				if (info.last * 1 === 3) {
+					temperature = value * Unities.temperature[info.last];
+				}
+				else if (info.last * 1 > 0) {
+					let p = Unities.temperature[info.last];
+					temperature = value * p[0] + p[1];
+				}
+				else {
+					temperature = value;
+				}
+
+				if (info.unity * 1 === 0) {
+					value = temperature;
+				}
+				else if (info.unity * 1 === 3) {
+					value = temperature / Unities.temperature[3];
+				}
+				else {
+					let p = Unities.temperature[info.unity];
+					value = (temperature - p[1]) / p[0];
+				}
+			}
+			else {
+				let unity = Unities[type];
+				value = info.value * unity[info.last] / unity[info.unity];
+			}
+			info.value = value;
+			info.last = info.unity;
 		},
 	}
 }
