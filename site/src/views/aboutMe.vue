@@ -13,9 +13,9 @@ export default {
 		await wait();
 
 		var [content, todo, update] = await Promise.all([
-			Granary.getContent('api/aboutme.md'),
-			Granary.getContent('api/todo.md'),
-			Granary.getContent('api/updatelog.md')
+			Granary.getContent('data/aboutme.md'),
+			Granary.getContent('data/todo.md'),
+			Granary.getContent('data/updatelog.md')
 		]);
 		if (!!todo) {
 			content = content + '\n\n\n+++\n\n\n' + todo;
