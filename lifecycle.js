@@ -1,4 +1,16 @@
 LifeCycle.on.ready(app => {
+	document.body.addEventListener('keydown', evt => {
+		if (evt.key === 'c' && evt.altKey) {
+			let current = app.router.currentRoute.value.name;
+			if (!['omniOS'].includes(current)) {
+				app.router.push({
+					path: '/console'
+				});
+			}
+			evt.preventDefault();
+		}
+	});
+
 	if (Devices.isMobile && Devices.isSafari) {
 		const app = document.querySelector('#app');
 		app.innerHTML = "<p>阁下所用之浏览器似乎是移动版 Safari。</p><p>由于其对 ES6 的支持之恶劣，以及鄙人不吝于屈尊降贵来适配它，故请阁下换用现代浏览器。</p><p>告辞不送。</p>";

@@ -242,6 +242,12 @@
 							"name": "LaTeX 数学公式",
 							"type": "page",
 							"category": "latex"
+						},
+						{
+							"name": "OmniOS",
+							"type": "page",
+							"category": "console",
+							"disabled": true
 						}
 					]
 				},

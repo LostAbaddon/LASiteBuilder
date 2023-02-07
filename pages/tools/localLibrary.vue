@@ -111,7 +111,7 @@ export default {
 			var all = await BookShelf.getAllArticles();
 			var cateList = {}, selAll = !cate;
 			this.$refs.count.innerText = all.length;
-			all.reverse()
+			all.reverse();
 			all = all.filter(art => {
 				if (art.author !== this.SiteOwner) art.name = art.title + ' (' + art.author + ')';
 				else art.name = art.title;
@@ -135,7 +135,7 @@ export default {
 				}
 				else {
 					art.category = '未分类';
-					sel = cate === art.category;
+					sel = sel || cate === art.category;
 				}
 				return sel;
 			});
