@@ -105,6 +105,11 @@
 							"name": "区块链",
 							"type": "viewer",
 							"category": "blockchain"
+						},
+						{
+							"name": "提示语",
+							"type": "viewer",
+							"category": "prompts"
 						}
 					]
 				}
